@@ -1,0 +1,3 @@
+[submodule "external/common_backend"]
+	path = external/common_backend
+	url = https://github.com/RealmOfAesir/common_backend.git
