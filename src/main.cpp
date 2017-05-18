@@ -20,7 +20,7 @@
 #include <json.hpp>
 #include <kafka_consumer.h>
 #include <kafka_producer.h>
-#include <admin_messages/quit_message.h>
+#include <admin_messages/admin_quit_message.h>
 
 #include <signal.h>
 #include <string>
