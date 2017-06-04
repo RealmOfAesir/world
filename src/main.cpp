@@ -33,8 +33,13 @@
 #include <exceptions.h>
 #include <roa_di.h>
 #include <macros.h>
+#include <database_pool.h>
+#include <repositories/locations_repository.h>
+#include <repositories/maps_repository.h>
+#include <repositories/script_zones_repository.h>
+#include <repositories/settings_repository.h>
 #include "message_handlers/message_dispatcher.h"
-#include "repositories/user_repository.h"
+#include "message_handlers/world/world_create_character_handler.h"
 #include "database_transaction.h"
 #include "config.h"
 
@@ -88,13 +93,13 @@ void init_logger(Config const config) noexcept {
 
 
 
-Config parse_env_file() {
+STD_OPTIONAL<Config> parse_env_file() {
     string env_contents;
     ifstream env(".env");
 
     if(!env) {
         LOG(ERROR) << "[main] no .env file found. Please make one.";
-        exit(1);
+        return {};
     }
 
     env.seekg(0, ios::end);
@@ -110,40 +115,40 @@ Config parse_env_file() {
         config.broker_list = env_json["BROKER_LIST"];
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] BROKER_LIST missing in .env file.";
-        exit(1);
+        return {};
     }
 
     try {
         config.group_id = env_json["GROUP_ID"];
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] GROUP_ID missing in .env file.";
-        exit(1);
+        return {};
     }
 
     try {
         config.server_id = env_json["SERVER_ID"];
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] SERVER_ID missing in .env file.";
-        exit(1);
+        return {};
     }
 
     if(config.server_id == 0) {
         LOG(ERROR) << "[main] SERVER_ID has to be greater than 0";
-        exit(1);
+        return {};
     }
 
     try {
         config.connection_string = env_json["CONNECTION_STRING"];
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] CONNECTION_STRING missing in .env file.";
-        exit(1);
+        return {};
     }
 
     try {
         config.debug_level = env_json["DEBUG_LEVEL"];
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] DEBUG_LEVEL missing in .env file.";
-        exit(1);
+        return {};
     }
 
     return config;
@@ -152,33 +157,44 @@ Config parse_env_file() {
 int main() {
     Config config;
     try {
-        config = parse_env_file();
+        auto config_opt = parse_env_file();
+        if(!config_opt) {
+            return 1;
+        }
+        config = config_opt.value();
     } catch (const std::exception& e) {
         LOG(ERROR) << "[main] .env file is malformed json.";
-        exit(1);
+        return 1;
     }
 
     init_logger(config);
     init_extras();
 
     database_pool db_pool;
-    db_pool.create_connections(config.connection_string);
+    db_pool.create_connections(config.connection_string, 2);
     auto common_injector = create_common_di_injector();
     auto backend_injector = boost::di::make_injector(
             boost::di::bind<idatabase_transaction>.to<database_transaction>(),
-            boost::di::bind<idatabase_connection>.to<idatabase_connection>(),
+            boost::di::bind<idatabase_connection>.to<database_connection>(),
             boost::di::bind<idatabase_pool>.to(db_pool),
-            boost::di::bind<iuser_repository>.to<user_repository>());
+            boost::di::bind<ilocations_repository>.to<locations_repository>(),
+            boost::di::bind<imaps_repository>.to<maps_repository>(),
+            boost::di::bind<iplayers_repository>.to<players_repository>(),
+            boost::di::bind<iscript_zones_repository>.to<script_zones_repository>(),
+            boost::di::bind<isettings_repository>.to<settings_repository>()
+    );
 
     auto producer = common_injector.create<shared_ptr<ikafka_producer<false>>>();
     auto backend_consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();
-    auto user_repo = backend_injector.create<user_repository>();
+    auto players_repo = backend_injector.create<players_repository>();
     backend_consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"});
     producer->start(config.broker_list);
 
 
     try {
-        message_dispatcher<false> backend_server_msg_dispatcher;
+        message_dispatcher<false> world_server_msg_dispatcher;
+
+        world_server_msg_dispatcher.register_handler<world_create_character_handler>(config, players_repo, producer);
 
         LOG(INFO) << "[main] starting main thread";
 
@@ -188,7 +204,7 @@ int main() {
                 auto msg = backend_consumer->try_get_message(10);
                 if (get<1>(msg)) {
 
-                    backend_server_msg_dispatcher.trigger_handler(msg);
+                    world_server_msg_dispatcher.trigger_handler(msg);
                 }
             } catch (serialization_exception &e) {
                 cout << "[main] received exception " << e.what() << endl;

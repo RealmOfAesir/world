@@ -20,12 +20,20 @@
 
 #include <string>
 
+/*INSERT INTO settings ("name", value) VALUES ('xp_gain', '1');
+INSERT INTO settings ("name", value) VALUES ('money_gain', '1');
+INSERT INTO settings ("name", value) VALUES ('movement_multiplier', '1');
+INSERT INTO settings ("name", value) VALUES ('drop_rate_multiplier', '1');
+INSERT INTO settings ("name", value) VALUES ('maintenance_mode', '0');
+INSERT INTO settings ("name", value) VALUES ('player_start_script_zone', '0');*/
+
 namespace roa {
-    struct Config {
-        std::string broker_list;
-        std::string group_id;
-        uint32_t server_id;
-        std::string connection_string;
-        std::string debug_level;
+    struct Settings {
+        double xp_gain;
+        double money_gain;
+        double movement_multiplier;
+        double drop_rate_multiplier;
+        bool maintenance_mode;
+        std::string player_start_script_zone;
     };
 }
