@@ -194,7 +194,7 @@ int main() {
     try {
         message_dispatcher<false> world_server_msg_dispatcher;
 
-        world_server_msg_dispatcher.register_handler<world_create_character_handler>(config, players_repo, producer);
+        world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
 
         LOG(INFO) << "[main] starting main thread";
 
