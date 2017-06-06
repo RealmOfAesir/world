@@ -48,7 +48,7 @@ world_create_character_handler::world_create_character_handler(Config& config,
 
 void world_create_character_handler::handle_message(unique_ptr<binary_message const> const &msg) {
     // send message to gateway id instead of backend id
-    string queue_name = "server-" + to_string(msg->sender.server_origin_id);
+    string queue_name = "server-" + to_string(msg->sender.server_destination_id);
     try {
         if (auto casted_msg = dynamic_cast<create_character_message<false> const *>(msg.get())) {
             auto transaction = _players_repository.create_transaction();
@@ -67,6 +67,7 @@ void world_create_character_handler::handle_message(unique_ptr<binary_message co
             // TODO get snapshot of world data in tiled format and deltas since then and send that instead of player name
             // but for that to happen, we need a world in the first place. So use this as a placeholder.
 
+            LOG(INFO) << "sending successful player creation to " << queue_name;
             this->_producer->enqueue_message(queue_name, create_message(msg->sender.client_id, _config.server_id, casted_msg->player_name));
         } else {
             LOG(ERROR) << NAMEOF(world_create_character_handler::handle_message) << " Couldn't cast message to create_character_message";
