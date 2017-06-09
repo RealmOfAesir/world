@@ -50,15 +50,15 @@ TEST_CASE("players repository tests") {
     SECTION( "player inserted correctly" ) {
         roa::map _map{0, "map_name"s};
 
-        maps_repo.insert_map(_map, transaction);
+        maps_repo.insert_map(_map, get<1>(transaction));
 
         location loc{0, _map.id, 0, 0};
-        locations_repo.insert_location(loc, transaction);
+        locations_repo.insert_location(loc, get<1>(transaction));
 
         player plyr{0, 1, loc.id, "john doe"s};
-        players_repo.insert_or_update_player(plyr, transaction);
+        players_repo.insert_or_update_player(plyr, get<1>(transaction));
 
-        auto plyr2 = players_repo.get_player(plyr.id, included_tables::none, transaction);
+        auto plyr2 = players_repo.get_player(plyr.id, included_tables::none, get<1>(transaction));
         REQUIRE(plyr2);
         REQUIRE(plyr2->location_id == plyr.location_id);
         REQUIRE(plyr2->user_id == plyr.user_id);
@@ -70,23 +70,23 @@ TEST_CASE("players repository tests") {
         script_zones_repository script_zones_repo = backend_injector.create<script_zones_repository>();
 
         roa::map _map{0, "map_name"s};
-        maps_repo.insert_map(_map, transaction);
+        maps_repo.insert_map(_map, get<1>(transaction));
 
         script_zone zone{0, "zone_name", _map.id, 0, 0, 1, 1};
-        script_zones_repo.insert_script_zone(zone, transaction);
+        script_zones_repo.insert_script_zone(zone, get<1>(transaction));
 
-        auto sett = settings_repo.get_setting("player_start_script_zone", transaction);
+        auto sett = settings_repo.get_setting("player_start_script_zone", get<1>(transaction));
         sett->value = to_string(zone.id);
-        settings_repo.insert_or_update_setting(sett.value(), transaction);
+        settings_repo.insert_or_update_setting(sett.value(), get<1>(transaction));
 
         player plyr{0, 1, 0, "john doe"s};
-        players_repo.insert_player_at_start_location(plyr, transaction);
+        players_repo.insert_player_at_start_location(plyr, get<1>(transaction));
 
-        auto plyr2 = players_repo.get_player(plyr.id, included_tables::none, transaction);
+        auto plyr2 = players_repo.get_player(plyr.id, included_tables::none, get<1>(transaction));
         REQUIRE(plyr2);
         REQUIRE(plyr2->location_id > 0);
 
-        auto loc = locations_repo.get_location(plyr2->location_id, transaction);
+        auto loc = locations_repo.get_location(plyr2->location_id, get<1>(transaction));
         REQUIRE(loc);
         REQUIRE(plyr2->location_id == loc->id);
         REQUIRE(plyr2->user_id == plyr.user_id);

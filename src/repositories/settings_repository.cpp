@@ -31,11 +31,11 @@ settings_repository::settings_repository(idatabase_pool& database_pool) : reposi
 
 }
 
-settings_repository::settings_repository(settings_repository &repo) : repository(repo._database_pool, unique_ptr<idatabase_connection>(repo._connection.release())) {
+settings_repository::settings_repository(settings_repository &repo) : repository(repo._database_pool) {
 
 }
 
-settings_repository::settings_repository(settings_repository &&repo) : repository(repo._database_pool, move(repo._connection)) {
+settings_repository::settings_repository(settings_repository &&repo) : repository(repo._database_pool) {
 
 }
 
@@ -43,7 +43,7 @@ settings_repository::~settings_repository() {
 
 }
 
-unique_ptr<idatabase_transaction> settings_repository::create_transaction() {
+auto settings_repository::create_transaction() -> decltype(repository::create_transaction()) {
     return repository::create_transaction();
 }
 

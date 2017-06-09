@@ -49,11 +49,14 @@ world_create_character_handler::world_create_character_handler(Config& config,
 void world_create_character_handler::handle_message(unique_ptr<binary_message const> const &msg) {
     // send message to gateway id instead of backend id
     string queue_name = "server-" + to_string(msg->sender.server_destination_id);
+
+    // TODO send error message to backend as well as gateway, so the backend can undo the create_character in its db
+
     try {
         if (auto casted_msg = dynamic_cast<create_character_message<false> const *>(msg.get())) {
             auto transaction = _players_repository.create_transaction();
 
-            auto existing_player = _players_repository.get_player(casted_msg->player_name, included_tables::none, transaction);
+            auto existing_player = _players_repository.get_player(casted_msg->player_name, included_tables::none, get<1>(transaction));
 
             if(existing_player) {
                 LOG(ERROR) << NAMEOF(world_create_character_handler::handle_message) << " Player already exists but received create message from backend";
@@ -61,8 +64,8 @@ void world_create_character_handler::handle_message(unique_ptr<binary_message co
             }
 
             player plyr{0, casted_msg->user_id, 0, casted_msg->player_name};
-            _players_repository.insert_player_at_start_location(plyr, transaction);
-            transaction->commit();
+            _players_repository.insert_player_at_start_location(plyr, get<1>(transaction));
+            get<1>(transaction)->commit();
 
             // TODO get snapshot of world data in tiled format and deltas since then and send that instead of player name
             // but for that to happen, we need a world in the first place. So use this as a placeholder.

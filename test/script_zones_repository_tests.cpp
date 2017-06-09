@@ -43,13 +43,13 @@ TEST_CASE("script zones repository tests") {
     SECTION( "script_zone inserted correctly" ) {
         roa::map _map{0, "map_name"s};
 
-        maps_repo.insert_map(_map, transaction);
+        maps_repo.insert_map(_map, get<1>(transaction));
 
         script_zone z{0, "zone_name", _map.id, 1, 2, 3, 4};
-        script_zones_repo.insert_script_zone(z, transaction);
+        script_zones_repo.insert_script_zone(z, get<1>(transaction));
         REQUIRE(z.id > 0);
 
-        auto z2 = script_zones_repo.get_script_zone(z.id, transaction);
+        auto z2 = script_zones_repo.get_script_zone(z.id, get<1>(transaction));
         REQUIRE(z2);
         REQUIRE(z2->id == z.id);
         REQUIRE(z2->zone_name == z.zone_name);

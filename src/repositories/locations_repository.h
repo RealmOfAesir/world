@@ -73,7 +73,7 @@ namespace roa {
         locations_repository(locations_repository &&repo);
         ~locations_repository();
 
-        std::unique_ptr<idatabase_transaction> create_transaction() override;
+        auto create_transaction() -> decltype(repository::create_transaction()) override;
 
         void insert_location(location& loc, std::unique_ptr<idatabase_transaction> const &transaction) override;
         void update_location(location& loc, std::unique_ptr<idatabase_transaction> const &transaction) override;

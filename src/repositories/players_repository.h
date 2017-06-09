@@ -98,7 +98,7 @@ namespace roa {
         players_repository(players_repository &&repo);
         ~players_repository();
 
-        std::unique_ptr<idatabase_transaction> create_transaction() override;
+        auto create_transaction() -> decltype(repository::create_transaction()) override;
 
         bool insert_or_update_player(player& plyr, std::unique_ptr<idatabase_transaction> const &transaction) override;
         void insert_player_at_start_location(player &plyr,

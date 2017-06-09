@@ -67,7 +67,7 @@ namespace roa {
         script_zones_repository(script_zones_repository &&repo);
         ~script_zones_repository();
 
-        std::unique_ptr<idatabase_transaction> create_transaction() override;
+        auto create_transaction() -> decltype(repository::create_transaction()) override;
 
         void insert_script_zone(script_zone& zone, std::unique_ptr<idatabase_transaction> const &transaction) override;
         void update_script_zone(script_zone& zone, std::unique_ptr<idatabase_transaction> const &transaction) override;

@@ -70,7 +70,7 @@ namespace roa {
         maps_repository(maps_repository &&repo);
         ~maps_repository();
 
-        std::unique_ptr<idatabase_transaction> create_transaction() override;
+        auto create_transaction() -> decltype(repository::create_transaction()) override;
 
         void insert_map(map& _map, std::unique_ptr<idatabase_transaction> const &transaction) override;
         void update_map(map& _map, std::unique_ptr<idatabase_transaction> const &transaction) override;

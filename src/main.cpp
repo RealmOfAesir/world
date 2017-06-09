@@ -187,8 +187,8 @@ int main() {
     auto producer = common_injector.create<shared_ptr<ikafka_producer<false>>>();
     auto backend_consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();
     auto players_repo = backend_injector.create<players_repository>();
-    backend_consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"});
-    producer->start(config.broker_list);
+    backend_consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"}, 50);
+    producer->start(config.broker_list, 50);
 
 
     try {

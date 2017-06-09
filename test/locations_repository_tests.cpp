@@ -43,13 +43,13 @@ TEST_CASE("locations repository tests") {
     SECTION( "location inserted correctly" ) {
         roa::map _map{0, "map_name"s};
 
-        maps_repo.insert_map(_map, transaction);
+        maps_repo.insert_map(_map, get<1>(transaction));
 
         location loc{0, _map.id, 1, 2};
-        locations_repo.insert_location(loc, transaction);
+        locations_repo.insert_location(loc, get<1>(transaction));
         REQUIRE(loc.id > 0);
 
-        auto loc2 = locations_repo.get_location(loc.id, transaction);
+        auto loc2 = locations_repo.get_location(loc.id, get<1>(transaction));
         REQUIRE(loc2);
         REQUIRE(loc2->id == loc.id);
         REQUIRE(loc2->map_id == loc.map_id);

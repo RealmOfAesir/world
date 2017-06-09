@@ -32,11 +32,11 @@ maps_repository::maps_repository(idatabase_pool& database_pool) : repository(dat
 
 }
 
-maps_repository::maps_repository(maps_repository &repo) : repository(repo._database_pool, unique_ptr<idatabase_connection>(repo._connection.release())) {
+maps_repository::maps_repository(maps_repository &repo) : repository(repo._database_pool) {
 
 }
 
-maps_repository::maps_repository(maps_repository &&repo) : repository(repo._database_pool, move(repo._connection)) {
+maps_repository::maps_repository(maps_repository &&repo) : repository(repo._database_pool) {
 
 }
 
@@ -44,7 +44,7 @@ maps_repository::~maps_repository() {
 
 }
 
-unique_ptr<idatabase_transaction> maps_repository::create_transaction() {
+auto maps_repository::create_transaction() -> decltype(repository::create_transaction()) {
     return repository::create_transaction();
 }
 

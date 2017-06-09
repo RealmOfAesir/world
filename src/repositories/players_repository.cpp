@@ -32,11 +32,11 @@ players_repository::players_repository(idatabase_pool& database_pool) : reposito
 
 }
 
-players_repository::players_repository(players_repository &repo) : repository(repo._database_pool, unique_ptr<idatabase_connection>(repo._connection.release())) {
+players_repository::players_repository(players_repository &repo) : repository(repo._database_pool) {
 
 }
 
-players_repository::players_repository(players_repository &&repo) : repository(repo._database_pool, move(repo._connection)) {
+players_repository::players_repository(players_repository &&repo) : repository(repo._database_pool) {
 
 }
 
@@ -44,7 +44,7 @@ players_repository::~players_repository() {
 
 }
 
-unique_ptr<idatabase_transaction> players_repository::create_transaction() {
+auto players_repository::create_transaction() -> decltype(repository::create_transaction()) {
     return repository::create_transaction();
 }
 

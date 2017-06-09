@@ -39,10 +39,10 @@ TEST_CASE("settings repository tests") {
 
     SECTION( "setting inserted correctly" ) {
         setting sett{"test_name", "test_value"};
-        bool inserted = settings_repo.insert_or_update_setting(sett, transaction);
+        bool inserted = settings_repo.insert_or_update_setting(sett, get<1>(transaction));
         REQUIRE(inserted == true);
 
-        auto sett2 = settings_repo.get_setting("test_name", transaction);
+        auto sett2 = settings_repo.get_setting("test_name", get<1>(transaction));
         REQUIRE(sett2);
         REQUIRE(sett2->name == sett.name);
         REQUIRE(sett2->value == sett.value);
@@ -50,12 +50,12 @@ TEST_CASE("settings repository tests") {
 
     SECTION( "setting updated correctly" ) {
         setting sett{"test_name", "test_value"};
-        settings_repo.insert_or_update_setting(sett, transaction);
+        settings_repo.insert_or_update_setting(sett, get<1>(transaction));
         sett.value = "test_value2";
-        bool inserted = settings_repo.insert_or_update_setting(sett, transaction);
+        bool inserted = settings_repo.insert_or_update_setting(sett, get<1>(transaction));
         REQUIRE(inserted == false);
 
-        auto sett2 = settings_repo.get_setting("test_name", transaction);
+        auto sett2 = settings_repo.get_setting("test_name", get<1>(transaction));
         REQUIRE(sett2);
         REQUIRE(sett2->name == sett.name);
         REQUIRE(sett2->value == sett.value);

@@ -40,10 +40,10 @@ TEST_CASE("maps repository tests") {
     SECTION( "map inserted correctly" ) {
         roa::map _map{0, "map_name"s};
 
-        maps_repo.insert_map(_map, transaction);
+        maps_repo.insert_map(_map, get<1>(transaction));
         REQUIRE(_map.id > 0);
 
-        auto _map2 = maps_repo.get_map(_map.id, transaction);
+        auto _map2 = maps_repo.get_map(_map.id, get<1>(transaction));
         REQUIRE(_map2);
         REQUIRE(_map2->id == _map.id);
         REQUIRE(_map2->name == _map.name);

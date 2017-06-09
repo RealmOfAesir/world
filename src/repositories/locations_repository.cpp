@@ -32,11 +32,11 @@ locations_repository::locations_repository(idatabase_pool& database_pool) : repo
 
 }
 
-locations_repository::locations_repository(locations_repository &repo) : repository(repo._database_pool, unique_ptr<idatabase_connection>(repo._connection.release())) {
+locations_repository::locations_repository(locations_repository &repo) : repository(repo._database_pool) {
 
 }
 
-locations_repository::locations_repository(locations_repository &&repo) : repository(repo._database_pool, move(repo._connection)) {
+locations_repository::locations_repository(locations_repository &&repo) : repository(repo._database_pool) {
 
 }
 
@@ -44,7 +44,7 @@ locations_repository::~locations_repository() {
 
 }
 
-unique_ptr<idatabase_transaction> locations_repository::create_transaction() {
+auto locations_repository::create_transaction() -> decltype(repository::create_transaction()) {
     return repository::create_transaction();
 }
 

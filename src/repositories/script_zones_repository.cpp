@@ -32,11 +32,11 @@ script_zones_repository::script_zones_repository(idatabase_pool& database_pool) 
 
 }
 
-script_zones_repository::script_zones_repository(script_zones_repository &repo) : repository(repo._database_pool, unique_ptr<idatabase_connection>(repo._connection.release())) {
+script_zones_repository::script_zones_repository(script_zones_repository &repo) : repository(repo._database_pool) {
 
 }
 
-script_zones_repository::script_zones_repository(script_zones_repository &&repo) : repository(repo._database_pool, move(repo._connection)) {
+script_zones_repository::script_zones_repository(script_zones_repository &&repo) : repository(repo._database_pool) {
 
 }
 
@@ -44,7 +44,7 @@ script_zones_repository::~script_zones_repository() {
 
 }
 
-unique_ptr<idatabase_transaction> script_zones_repository::create_transaction() {
+auto script_zones_repository::create_transaction() -> decltype(repository::create_transaction()) {
     return repository::create_transaction();
 }
 
