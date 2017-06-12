@@ -47,11 +47,10 @@ TEST_CASE("players repository tests") {
     locations_repository locations_repo = backend_injector.create<locations_repository>();
     auto transaction = players_repo.create_transaction();
 
+    roa::map _map{0, "map_name"s};
+    maps_repo.insert_map(_map, get<1>(transaction));
+
     SECTION( "player inserted correctly" ) {
-        roa::map _map{0, "map_name"s};
-
-        maps_repo.insert_map(_map, get<1>(transaction));
-
         location loc{0, _map.id, 0, 0};
         locations_repo.insert_location(loc, get<1>(transaction));
 
@@ -65,12 +64,34 @@ TEST_CASE("players repository tests") {
         REQUIRE(plyr2->name == plyr.name);
     }
 
+    SECTION( "multiple players retrieved correctly" ) {
+        location loc{0, _map.id, 0, 0};
+        locations_repo.insert_location(loc, get<1>(transaction));
+
+        player plyr{0, 2, loc.id, "john doe"s};
+        player plyr2{0, 2, loc.id, "john doe2"s};
+        players_repo.insert_or_update_player(plyr, get<1>(transaction));
+        players_repo.insert_or_update_player(plyr2, get<1>(transaction));
+
+        auto players = players_repo.get_players_by_user_id(plyr.user_id, included_tables::none, get<1>(transaction));
+        REQUIRE(players.size() == 2);
+        REQUIRE(!players[0].location);
+        REQUIRE(players[0].items.size() == 0);
+        REQUIRE(players[0].stats.size() == 0);
+
+        players = players_repo.get_players_by_user_id(plyr.user_id, included_tables::location, get<1>(transaction));
+        REQUIRE(players.size() == 2);
+        REQUIRE(players[0].location);
+        REQUIRE(players[0].location->map_name == _map.name);
+        REQUIRE(players[0].location->x == loc.x);
+        REQUIRE(players[0].location->y == loc.y);
+        REQUIRE(players[0].items.size() == 0);
+        REQUIRE(players[0].stats.size() == 0);
+    }
+
     SECTION( "player inserted correctly at script zone" ) {
         settings_repository settings_repo = backend_injector.create<settings_repository>();
         script_zones_repository script_zones_repo = backend_injector.create<script_zones_repository>();
-
-        roa::map _map{0, "map_name"s};
-        maps_repo.insert_map(_map, get<1>(transaction));
 
         script_zone zone{0, "zone_name", _map.id, 0, 0, 1, 1};
         script_zones_repo.insert_script_zone(zone, get<1>(transaction));

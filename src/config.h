@@ -27,5 +27,6 @@ namespace roa {
         uint32_t server_id;
         std::string connection_string;
         std::string debug_level;
+        std::string world_name;
     };
 }

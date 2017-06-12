@@ -71,14 +71,14 @@ void maps_repository::update_map(roa::map &_map, std::unique_ptr<idatabase_trans
 }
 
 optional <roa::map> maps_repository::get_map(uint32_t id, std::unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM maps WHERE id = " + to_string(id));
+    auto result = transaction->execute("SELECT m.id, m.map_name FROM maps m WHERE id = " + to_string(id));
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(maps_repository::get_map) << " found no map by id " << id;
         return {};
     }
 
-    auto ret = make_optional<map>({result[0]["id"].as<uint32_t>(), result[0]["map_name"].as<string>()});
+    auto ret = make_optional<map>({result[0][0].as<uint32_t>(), result[0][1].as<string>()});
 
     LOG(DEBUG) << NAMEOF(maps_repository::get_map) << " found map with id " << ret->id;
 
@@ -87,14 +87,14 @@ optional <roa::map> maps_repository::get_map(uint32_t id, std::unique_ptr<idatab
 
 optional <roa::map>
 maps_repository::get_map(std::string const &name, std::unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM maps WHERE map_name = " + transaction->escape(name));
+    auto result = transaction->execute("SELECT m.id, m.map_name FROM maps m WHERE map_name = " + transaction->escape(name));
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(maps_repository::get_map) << " found no map by name " << name;
         return {};
     }
 
-    auto ret = make_optional<map>({result[0]["id"].as<uint32_t>(), result[0]["map_name"].as<string>()});
+    auto ret = make_optional<map>({result[0][0].as<uint32_t>(), result[0][1].as<string>()});
 
     LOG(DEBUG) << NAMEOF(maps_repository::get_map) << " found map with name " << name;
 

@@ -76,17 +76,17 @@ void script_zones_repository::update_script_zone(script_zone &zone,
 
 STD_OPTIONAL<script_zone>
 script_zones_repository::get_script_zone(uint32_t id, unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM script_zones WHERE id = " + to_string(id));
+    auto result = transaction->execute("SELECT sz.id, sz.zone_name, sz.map_id, sz.x, sz.y, sz.width, sz.height FROM script_zones sz WHERE id = " + to_string(id));
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(script_zones_repository::get_script_zone) << " found no zone by id " << id;
         return {};
     }
 
-    auto ret = make_optional<script_zone>({result[0]["id"].as<uint32_t>(), result[0]["zone_name"].as<string>(),
-                                           result[0]["map_id"].as<uint32_t>(), result[0]["x"].as<uint32_t>(),
-                                           result[0]["y"].as<uint32_t>(), result[0]["width"].as<uint32_t>(),
-                                           result[0]["height"].as<uint32_t>()});
+    auto ret = make_optional<script_zone>({result[0][0].as<uint32_t>(), result[0][1].as<string>(),
+                                           result[0][2].as<uint32_t>(), result[0][3].as<uint32_t>(),
+                                           result[0][4].as<uint32_t>(), result[0][5].as<uint32_t>(),
+                                           result[0][6].as<uint32_t>()});
 
     LOG(DEBUG) << NAMEOF(script_zones_repository::get_script_zone) << " found zone with id " << ret->id;
 

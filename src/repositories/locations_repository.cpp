@@ -72,15 +72,15 @@ void locations_repository::update_location(location &loc, std::unique_ptr<idatab
 
 STD_OPTIONAL<location>
 locations_repository::get_location(uint64_t id, std::unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM locations WHERE id = " + to_string(id));
+    auto result = transaction->execute("SELECT l.id, l.map_id, l.x, l.y FROM locations l WHERE id = " + to_string(id));
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(locations_repository::get_location) << " found no location by id " << id;
         return {};
     }
 
-    auto ret = make_optional<location>({result[0]["id"].as<uint64_t>(), result[0]["map_id"].as<uint32_t>(),
-                                      result[0]["x"].as<uint32_t>(), result[0]["y"].as<uint32_t>()});
+    auto ret = make_optional<location>({result[0][0].as<uint64_t>(), result[0][1].as<uint32_t>(),
+                                        result[0][2].as<uint32_t>(), result[0][3].as<uint32_t>()});
 
     LOG(DEBUG) << NAMEOF(locations_repository::get_location) << " found location with id " << ret->id;
 
@@ -89,16 +89,16 @@ locations_repository::get_location(uint64_t id, std::unique_ptr<idatabase_transa
 
 std::vector<location> locations_repository::get_locations_by_map_id(uint32_t map_id,
                                                                     std::unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM locations WHERE map_id = " + to_string(map_id));
+    auto result = transaction->execute("SELECT l.id, l.map_id, l.x, l.y FROM locations l WHERE map_id = " + to_string(map_id));
 
     LOG(DEBUG) << NAMEOF(locations_repository::get_locations_by_map_id) << " contains " << result.size() << " entries";
 
     vector<location> locations;
-    locations.resize(result.size());
+    locations.reserve(result.size());
 
     for(auto const & res : result) {
-        locations.emplace_back<location>({result[0]["id"].as<uint32_t>(), result[0]["map_id"].as<uint32_t>(),
-                                        result[0]["x"].as<uint32_t>(), result[0]["y"].as<uint32_t>()});
+        locations.emplace_back<location>({result[0][0].as<uint32_t>(), result[0][1].as<uint32_t>(),
+                                          result[0][2].as<uint32_t>(), result[0][3].as<uint32_t>()});
     }
 
     return locations;

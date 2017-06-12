@@ -54,7 +54,7 @@ bool settings_repository::insert_or_update_setting(setting &sett,
             "', '" + transaction->escape(sett.value) + "') ON CONFLICT (setting_name) DO UPDATE SET"
             " value = '" + transaction->escape(sett.value) + "' RETURNING xmax");
 
-    if(result[0]["xmax"].as<string>() == "0") {
+    if(result[0][0].as<string>() == "0") {
         LOG(DEBUG) << NAMEOF(settings_repository::insert_or_update_setting) << " inserted setting";
         return true;
     }
@@ -65,7 +65,7 @@ bool settings_repository::insert_or_update_setting(setting &sett,
 
 STD_OPTIONAL<setting>
 settings_repository::get_setting(std::string const &name, std::unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM settings WHERE setting_name = '" + transaction->escape(name) + "'");
+    auto result = transaction->execute("SELECT s.setting_name, s.value FROM settings s WHERE setting_name = '" + transaction->escape(name) + "'");
 
     LOG(DEBUG) << NAMEOF(settings_repository::get_setting) << " contains " << result.size() << " entries";
 
@@ -73,5 +73,5 @@ settings_repository::get_setting(std::string const &name, std::unique_ptr<idatab
         return {};
     }
 
-    return make_optional<setting>({result[0]["setting_name"].as<string>(), result[0]["value"].as<string>()});
+    return make_optional<setting>({result[0][0].as<string>(), result[0][1].as<string>()});
 }

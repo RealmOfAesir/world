@@ -62,7 +62,7 @@ bool players_repository::insert_or_update_player(player &plyr, unique_ptr<idatab
 
     plyr.id = result[0][1].as<uint64_t>();
 
-    if(result[0]["xmax"].as<string>() == "0") {
+    if(result[0][0].as<string>() == "0") {
         LOG(DEBUG) << NAMEOF(players_repository::insert_or_update_player) << " inserted player with id " << plyr.id;
         return true;
     }
@@ -119,15 +119,15 @@ void players_repository::update_player(player &plyr, unique_ptr<idatabase_transa
 
 STD_OPTIONAL<player> players_repository::get_player(string const &name, included_tables includes,
                                                     unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM players WHERE player_name = '" + transaction->escape(name) + "'");
+    auto result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE player_name = '" + transaction->escape(name) + "'");
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found no player by name " << name;
         return {};
     }
 
-    auto ret = make_optional<player>({result[0]["id"].as<uint64_t>(), result[0]["user_id"].as<uint64_t>(),
-                                  result[0]["location_id"].as<uint64_t>(), result[0]["player_name"].as<string>()});
+    auto ret = make_optional<player>({result[0][0].as<uint64_t>(), result[0][1].as<uint64_t>(),
+                                      result[0][2].as<uint64_t>(), result[0][3].as<string>()});
 
     LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found player by name with id " << ret->id;
 
@@ -136,33 +136,47 @@ STD_OPTIONAL<player> players_repository::get_player(string const &name, included
 
 STD_OPTIONAL<player> players_repository::get_player(uint64_t id, included_tables includes,
                                                     unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM players WHERE id = " + to_string(id));
+    auto result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE id = " + to_string(id));
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found no player by id " << id;
         return {};
     }
 
-    auto ret = make_optional<player>({result[0]["id"].as<uint64_t>(), result[0]["user_id"].as<uint64_t>(),
-                                      result[0]["location_id"].as<uint64_t>(), result[0]["player_name"].as<string>()});
+    auto ret = make_optional<player>({result[0][0].as<uint64_t>(), result[0][1].as<uint64_t>(),
+                                      result[0][2].as<uint64_t>(), result[0][3].as<string>()});
 
     LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found player by id with id " << ret->id;
 
     return ret;
 }
 
-vector<player> players_repository::get_player_by_user_id(uint64_t user_id, included_tables includes,
-                                                         unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT * FROM players WHERE user_id = " + to_string(user_id));
+vector<player> players_repository::get_players_by_user_id(uint64_t user_id, included_tables includes,
+                                                          unique_ptr<idatabase_transaction> const &transaction) {
+    pqxx::result result;
+    if(includes == included_tables::none) {
+        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE user_id = " + to_string(user_id));
+    } else if (includes == included_tables::location) {
+        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name, l.x, l.y, m.map_name FROM players p "
+                                      "INNER JOIN locations l ON l.id = p.location_id "
+                                      "INNER JOIN maps m ON m.id = l.map_id "
+                                      "WHERE p.user_id = " + to_string(user_id));
+    } else {
+        LOG(ERROR) << NAMEOF(players_repository::get_players_by_user_id) << " included_tables value " << static_cast<int>(includes) << " not implemented";
+        throw unexpected_result_error("included_tables value not implemented");
+    }
 
-    LOG(DEBUG) << NAMEOF(players_repository::get_player_by_user_id) << " contains " << result.size() << " entries";
+    LOG(DEBUG) << NAMEOF(players_repository::get_players_by_user_id) << " contains " << result.size() << " entries";
 
     vector<player> players;
-    players.resize(result.size());
+    players.reserve(result.size());
 
     for(auto const & res : result) {
-        players.emplace_back<player>({res["id"].as<uint64_t>(), res["user_id"].as<uint64_t>(),
-                              res["location_id"].as<uint64_t>(), res["player_name"].as<string>()});
+        player plyr{res[0].as<uint64_t>(), res[1].as<uint64_t>(), res[2].as<uint64_t>(), res[3].as<string>()};
+        if(includes == included_tables::location) {
+            plyr.location.emplace(res[4].as<uint32_t>(), res[5].as<uint32_t>(), res[6].as<string>());
+        }
+        players.push_back(move(plyr));
     }
 
     return players;

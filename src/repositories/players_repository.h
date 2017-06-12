@@ -23,19 +23,49 @@
 #include "repository.h"
 
 namespace roa {
+    struct player_location {
+        uint32_t x;
+        uint32_t y;
+        std::string map_name;
+
+        player_location() = default;
+        player_location(uint32_t x, uint32_t y, std::string map_name) : x(x), y(y), map_name(map_name) {}
+    };
+
+    struct player_stat {
+        uint64_t id;
+        std::string name;
+        uint64_t value;
+
+        player_stat() = default;
+        player_stat(uint64_t id, std::string name, uint64_t value) : id(id), name(name), value(value) {}
+    };
+
+    struct player_item {
+        uint64_t id;
+        std::string name;
+
+        player_item() = default;
+        player_item(uint64_t id, std::string name) : id(id), name(name) {}
+    };
+
     struct player {
         uint64_t id;
         uint64_t user_id;
         uint64_t location_id;
         std::string name;
+        STD_OPTIONAL<player_location> location;
+        std::vector<player_stat> stats;
+        std::vector<player_item> items;
     };
 
     enum class included_tables : int
     {
-        none = 0x00,
-        stats = 0x01,
-        location = 0x02,
-        items = 0x04,
+        none,
+        stats,
+        location,
+        items,
+        all
     };
 
     class iplayers_repository : public irepository {
@@ -88,7 +118,8 @@ namespace roa {
          * @param transaction
          * @return players if found, {} if not
          */
-        virtual std::vector<player> get_player_by_user_id(uint64_t user_id, included_tables includes, std::unique_ptr<idatabase_transaction> const &transaction) = 0;
+        virtual std::vector<player> get_players_by_user_id(uint64_t user_id, included_tables includes,
+                                                           std::unique_ptr<idatabase_transaction> const &transaction) = 0;
     };
 
     class players_repository : public repository, public iplayers_repository {
@@ -106,6 +137,7 @@ namespace roa {
         void update_player(player& plyr, std::unique_ptr<idatabase_transaction> const &transaction) override;
         STD_OPTIONAL<player> get_player(std::string const & name, included_tables includes, std::unique_ptr<idatabase_transaction> const &transaction) override;
         STD_OPTIONAL<player> get_player(uint64_t id, included_tables includes, std::unique_ptr<idatabase_transaction> const &transaction) override;
-        std::vector<player> get_player_by_user_id(uint64_t user_id, included_tables includes, std::unique_ptr<idatabase_transaction> const &transaction) override;
+        std::vector<player> get_players_by_user_id(uint64_t user_id, included_tables includes,
+                                                   std::unique_ptr<idatabase_transaction> const &transaction) override;
     };
 }

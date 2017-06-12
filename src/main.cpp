@@ -38,6 +38,7 @@
 #include <repositories/maps_repository.h>
 #include <repositories/script_zones_repository.h>
 #include <repositories/settings_repository.h>
+#include <message_handlers/world/world_get_characters_handler.h>
 #include "message_handlers/message_dispatcher.h"
 #include "message_handlers/world/world_create_character_handler.h"
 #include "database_transaction.h"
@@ -151,6 +152,13 @@ STD_OPTIONAL<Config> parse_env_file() {
         return {};
     }
 
+    try {
+        config.world_name = env_json["WORLD_NAME"];
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "[main] WORLD_NAME missing in .env file.";
+        return {};
+    }
+
     return config;
 }
 
@@ -195,6 +203,7 @@ int main() {
         message_dispatcher<false> world_server_msg_dispatcher;
 
         world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
+        world_server_msg_dispatcher.register_handler<world_get_characters_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
 
         LOG(INFO) << "[main] starting main thread";
 
@@ -207,7 +216,9 @@ int main() {
                     world_server_msg_dispatcher.trigger_handler(msg);
                 }
             } catch (serialization_exception &e) {
-                cout << "[main] received exception " << e.what() << endl;
+                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received serialization exception " << e.what();
+            } catch(exception &e) {
+                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received exception " << e.what();
             }
         }
 
