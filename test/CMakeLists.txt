@@ -23,7 +23,6 @@ include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/libpqx
 include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/common/external/json/src")
 include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/common/external/Catch/include")
 include_directories("${CMAKE_SOURCE_DIR}/external/entityx")
-include_directories("${CMAKE_SOURCE_DIR}/external/readerwriterqueue")
 include_directories("${CMAKE_SOURCE_DIR}/external/LuaJIT/src")
 
 find_library(RDKAFKA_LIBRARY rdkafka HINTS ${CMAKE_SOURCE_DIR}/external/common_backend/external/librdkafka/src)
