@@ -1,3 +1,12 @@
 [submodule "external/common_backend"]
 	path = external/common_backend
 	url = https://github.com/RealmOfAesir/common_backend.git
+[submodule "external/entityx"]
+	path = external/entityx
+	url = https://github.com/alecthomas/entityx.git
+[submodule "external/readerwriterqueue"]
+	path = external/readerwriterqueue
+	url = https://github.com/cameron314/readerwriterqueue.git
+[submodule "external/LuaJIT"]
+	path = external/LuaJIT
+	url = https://github.com/LuaJIT/LuaJIT.git

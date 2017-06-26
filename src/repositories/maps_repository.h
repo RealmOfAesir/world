@@ -65,7 +65,7 @@ namespace roa {
 
     class maps_repository : public repository, public imaps_repository {
     public:
-        explicit maps_repository(idatabase_pool& database_pool);
+        explicit maps_repository(std::shared_ptr<idatabase_pool> database_pool);
         maps_repository(maps_repository &repo);
         maps_repository(maps_repository &&repo);
         ~maps_repository();

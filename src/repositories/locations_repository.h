@@ -68,7 +68,7 @@ namespace roa {
 
     class locations_repository : public repository, public ilocations_repository {
     public:
-        explicit locations_repository(idatabase_pool& database_pool);
+        explicit locations_repository(std::shared_ptr<idatabase_pool> database_pool);
         locations_repository(locations_repository &repo);
         locations_repository(locations_repository &&repo);
         ~locations_repository();

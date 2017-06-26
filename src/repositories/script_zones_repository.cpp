@@ -28,7 +28,7 @@ using namespace experimental;
 using namespace roa;
 using namespace pqxx;
 
-script_zones_repository::script_zones_repository(idatabase_pool& database_pool) : repository(database_pool) {
+script_zones_repository::script_zones_repository(shared_ptr<idatabase_pool> database_pool) : repository(database_pool) {
 
 }
 

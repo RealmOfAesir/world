@@ -21,6 +21,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os")
 
+# for lua
+SET(CMAKE_EXE_LINKER_FLAGS  "-rdynamic")
+
 add_subdirectory(src)
 
 enable_testing()

@@ -27,7 +27,7 @@ using namespace experimental;
 using namespace roa;
 using namespace pqxx;
 
-settings_repository::settings_repository(idatabase_pool& database_pool) : repository(database_pool) {
+settings_repository::settings_repository(shared_ptr<idatabase_pool> database_pool) : repository(database_pool) {
 
 }
 

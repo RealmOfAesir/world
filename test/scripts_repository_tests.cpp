@@ -21,32 +21,43 @@
 #include <easylogging++.h>
 #include <database_transaction.h>
 #include "test_helpers/startup_helper.h"
-#include "../src/repositories/maps_repository.h"
+#include "../src/repositories/scripts_repository.h"
 
 using namespace std;
 using namespace roa;
 
-TEST_CASE("maps repository tests") {
+TEST_CASE("scripts repository tests") {
     auto backend_injector = boost::di::make_injector(
             boost::di::bind<idatabase_transaction>.to<database_transaction>(),
             boost::di::bind<idatabase_connection>.to<database_connection>(),
             boost::di::bind<idatabase_pool>.to(db_pool),
             boost::di::bind<irepository>.to<repository>(),
-            boost::di::bind<imaps_repository>.to<maps_repository>());
+            boost::di::bind<iscripts_repository>.to<scripts_repository>());
 
-    maps_repository maps_repo = backend_injector.create<maps_repository>();
-    auto transaction = maps_repo.create_transaction();
+    scripts_repository scripts_repo = backend_injector.create<scripts_repository>();
+    auto transaction = scripts_repo.create_transaction();
 
-    SECTION( "map inserted correctly" ) {
-        roa::map _map{0, "map_name"s};
+    SECTION("script inserted correctly") {
+        script scr{"test_name", "test_value"};
+        bool inserted = scripts_repo.insert_or_update_script(scr, get<1>(transaction));
+        REQUIRE(inserted == true);
 
-        maps_repo.insert_map(_map, get<1>(transaction));
-        REQUIRE(_map.id > 0);
+        auto scr2 = scripts_repo.get_script("test_name", get<1>(transaction));
+        REQUIRE(scr2);
+        REQUIRE(scr2->name == scr.name);
+        REQUIRE(scr2->text == scr.text);
+    }
 
-        auto _map2 = maps_repo.get_map(_map.id, get<1>(transaction));
-        REQUIRE(_map2);
-        REQUIRE(_map2->id == _map.id);
-        REQUIRE(_map2->name == _map.name);
+    SECTION("script updated correctly") {
+        script scr{"test_name", "test_value"};
+        scripts_repo.insert_or_update_script(scr, get<1>(transaction));
+        scr.text = "test_value2";
+        bool inserted = scripts_repo.insert_or_update_script(scr, get<1>(transaction));
+        REQUIRE(inserted == false);
 
+        auto scr2 = scripts_repo.get_script("test_name", get<1>(transaction));
+        REQUIRE(scr2);
+        REQUIRE(scr2->name == scr.name);
+        REQUIRE(scr2->text == scr.text);
     }
 }

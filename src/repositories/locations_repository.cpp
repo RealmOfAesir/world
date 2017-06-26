@@ -28,7 +28,7 @@ using namespace experimental;
 using namespace roa;
 using namespace pqxx;
 
-locations_repository::locations_repository(idatabase_pool& database_pool) : repository(database_pool) {
+locations_repository::locations_repository(shared_ptr<idatabase_pool> database_pool) : repository(database_pool) {
 
 }
 

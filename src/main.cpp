@@ -39,6 +39,9 @@
 #include <repositories/script_zones_repository.h>
 #include <repositories/settings_repository.h>
 #include <message_handlers/world/world_get_characters_handler.h>
+#include <repositories/scripts_repository.h>
+#include <lua/lua_interop.h>
+#include <world/world.h>
 #include "message_handlers/message_dispatcher.h"
 #include "message_handlers/world/world_create_character_handler.h"
 #include "database_transaction.h"
@@ -145,6 +148,8 @@ STD_OPTIONAL<Config> parse_env_file() {
         return {};
     }
 
+    // TODO the following settings should be moved into the database
+
     try {
         config.debug_level = env_json["DEBUG_LEVEL"];
     } catch (const std::exception& e) {
@@ -159,7 +164,87 @@ STD_OPTIONAL<Config> parse_env_file() {
         return {};
     }
 
+    try {
+        config.tick_length = env_json["TICK_LENGTH"];
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "[main] TICK_LENGTH missing in .env file.";
+        return {};
+    }
+
     return config;
+}
+
+unique_ptr<thread> create_consumer_thread(Config& config, shared_ptr<database_pool> db_pool, shared_ptr<ikafka_consumer<false>> consumer, shared_ptr<ikafka_producer<false>> producer) {
+    if (!consumer || !producer) {
+        LOG(ERROR) << NAMEOF(create_consumer_thread) << " one of the arguments are null";
+        throw runtime_error("[main:consumer] one of the arguments are null");
+    }
+
+    return make_unique<thread>([=, &config] {
+        LOG(INFO) << NAMEOF(create_consumer_thread) << " starting consumer thread";
+
+        auto backend_injector = boost::di::make_injector(
+                boost::di::bind<idatabase_transaction>.to<database_transaction>(),
+                boost::di::bind<idatabase_connection>.to<database_connection>(),
+                boost::di::bind<idatabase_pool>.to(db_pool),
+                boost::di::bind<ilocations_repository>.to<locations_repository>(),
+                boost::di::bind<imaps_repository>.to<maps_repository>(),
+                boost::di::bind<iplayers_repository>.to<players_repository>(),
+                boost::di::bind<iscript_zones_repository>.to<script_zones_repository>(),
+                boost::di::bind<isettings_repository>.to<settings_repository>()
+        );
+
+        auto players_repo = backend_injector.create<players_repository>();
+
+        message_dispatcher<false> world_server_msg_dispatcher;
+
+        world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
+        world_server_msg_dispatcher.register_handler<world_get_characters_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
+
+        consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"}, 50);
+
+        LOG(INFO) << NAMEOF(create_consumer_thread) << " started consumer thread";
+
+        while (!quit) {
+            try {
+                auto msg = consumer->try_get_message(50);
+                if (get<1>(msg)) {
+                    world_server_msg_dispatcher.trigger_handler(msg);
+                }
+            } catch (serialization_exception &e) {
+                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received serialization exception " << e.what();
+            } catch(exception &e) {
+                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received exception " << e.what();
+            }
+        }
+
+        consumer->close();
+    });
+}
+
+unique_ptr<thread> create_world_thread(Config& config, shared_ptr<database_pool> db_pool, shared_ptr<ikafka_producer<false>> producer) {
+    if (!producer) {
+        LOG(ERROR) << NAMEOF(create_world_thread) << " one of the arguments are null";
+        throw runtime_error("[main:world] one of the arguments are null");
+    }
+
+    return make_unique<thread>([=, &config] {
+        LOG(INFO) << NAMEOF(create_world_thread) << " starting world thread";
+
+        world w;
+        w.load_from_database(db_pool, config);
+        auto next_tick = chrono::system_clock::now() + chrono::milliseconds(config.tick_length);
+        auto second_next_tick = next_tick + chrono::milliseconds(config.tick_length);
+        while (!quit) {
+            auto now = chrono::system_clock::now();
+            if(now < next_tick) {
+                this_thread::sleep_until(next_tick);
+            }
+            w.do_tick();
+            next_tick = second_next_tick;
+            second_next_tick = second_next_tick + chrono::milliseconds(config.tick_length);
+        }
+    });
 }
 
 int main() {
@@ -178,54 +263,56 @@ int main() {
     init_logger(config);
     init_extras();
 
-    database_pool db_pool;
-    db_pool.create_connections(config.connection_string, 2);
+    auto db_pool = make_shared<database_pool>();
+    db_pool->create_connections(config.connection_string, 2);
     auto common_injector = create_common_di_injector();
-    auto backend_injector = boost::di::make_injector(
-            boost::di::bind<idatabase_transaction>.to<database_transaction>(),
-            boost::di::bind<idatabase_connection>.to<database_connection>(),
-            boost::di::bind<idatabase_pool>.to(db_pool),
-            boost::di::bind<ilocations_repository>.to<locations_repository>(),
-            boost::di::bind<imaps_repository>.to<maps_repository>(),
-            boost::di::bind<iplayers_repository>.to<players_repository>(),
-            boost::di::bind<iscript_zones_repository>.to<script_zones_repository>(),
-            boost::di::bind<isettings_repository>.to<settings_repository>()
-    );
+
+    {
+        auto repo_injector = boost::di::make_injector(
+                boost::di::bind<idatabase_transaction>.to<database_transaction>(),
+                boost::di::bind<idatabase_connection>.to<database_connection>(),
+                boost::di::bind<idatabase_pool>.to(db_pool),
+                boost::di::bind<iscripts_repository>.to<scripts_repository>()
+        );
+
+        scripts_repository scripts_repo = repo_injector.create<scripts_repository>();
+        auto transaction = scripts_repo.create_transaction();
+        auto script = scripts_repo.get_script("roa_library", get<1>(transaction));
+
+        if(!script) {
+            LOG(ERROR) << "database not seeded properly, please insert roa_library";
+            return 1;
+        }
+
+        set_library_script(script->text);
+    }
 
     auto producer = common_injector.create<shared_ptr<ikafka_producer<false>>>();
-    auto backend_consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();
-    auto players_repo = backend_injector.create<players_repository>();
-    backend_consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"}, 50);
+    auto consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();
+
     producer->start(config.broker_list, 50);
 
-
     try {
-        message_dispatcher<false> world_server_msg_dispatcher;
-
-        world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
-        world_server_msg_dispatcher.register_handler<world_get_characters_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
-
         LOG(INFO) << "[main] starting main thread";
+
+        auto consumer_thread = create_consumer_thread(config, db_pool, consumer, producer);
+        auto world_thread = create_world_thread(config, db_pool, producer);
 
         while (!quit) {
             try {
-                producer->poll(10);
-                auto msg = backend_consumer->try_get_message(10);
-                if (get<1>(msg)) {
-
-                    world_server_msg_dispatcher.trigger_handler(msg);
-                }
+                producer->poll(50);
             } catch (serialization_exception &e) {
-                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received serialization exception " << e.what();
+                LOG(ERROR) << NAMEOF(main) << " received serialization exception " << e.what();
             } catch(exception &e) {
-                LOG(ERROR) << NAMEOF(create_consumer_thread) << " received exception " << e.what();
+                LOG(ERROR) << NAMEOF(main) << " received exception " << e.what();
             }
         }
 
         LOG(INFO) << "[main] closing";
 
         producer->close();
-        backend_consumer->close();
+        consumer_thread->join();
+        world_thread->join();
     } catch (const runtime_error& e) {
         LOG(ERROR) << "[main] error: " << typeid(e).name() << "-" << e.what();
     }

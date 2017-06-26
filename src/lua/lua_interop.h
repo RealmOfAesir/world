@@ -1,5 +1,5 @@
 /*
-    Realm of Aesir
+    Realm of Aesir backend
     Copyright (C) 2016  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,26 @@
 
 #pragma once
 
-#include "../../src/config.h"
-#include <database_pool.h>
+#include <lua.hpp>
+#include <iostream>
 
 namespace roa {
-    extern Config config;
-    extern std::shared_ptr<database_pool> db_pool;
+    lua_State* load_script_with_libraries(std::string script);
+    void set_library_script(std::string script);
+
+    class event_type {
+    public:
+        explicit event_type(uint32_t type) : type(type) {}
+        uint32_t type;
+    };
+
+    class update_tile_event : public event_type {
+    public:
+        update_tile_event() = default;
+        update_tile_event(uint32_t id, uint32_t tile_id) : event_type(update_tile_event::type), id(id), tile_id(tile_id) {}
+
+        static constexpr uint32_t type = 1;
+        uint32_t id;
+        uint32_t tile_id;
+    };
 }

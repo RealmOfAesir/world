@@ -28,5 +28,6 @@ namespace roa {
         std::string connection_string;
         std::string debug_level;
         std::string world_name;
+        uint32_t tick_length;
     };
 }

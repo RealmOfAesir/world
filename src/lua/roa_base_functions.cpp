@@ -1,5 +1,5 @@
 /*
-    Realm of Aesir
+    Realm of Aesir backend
     Copyright (C) 2016  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
@@ -16,12 +16,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include <queue>
+#include "lua_interop.h"
+#include "easylogging++.h"
 
-#include "../../src/config.h"
-#include <database_pool.h>
+using namespace std;
+using namespace roa;
 
-namespace roa {
-    extern Config config;
-    extern std::shared_ptr<database_pool> db_pool;
+extern queue<shared_ptr<event_type>> _script_event_queue;
+
+extern "C" void roa_log(int level, char const *message) {
+    switch (level) {
+        case 0:
+            LOG(DEBUG) << message;
+            break;
+        case 1:
+            LOG(INFO) << message;
+            break;
+        default:
+            LOG(WARNING) << message;
+            break;
+    }
 }
+
+extern "C" void set_tile_properties(uint32_t id, uint32_t tile_id) {
+    _script_event_queue.emplace<shared_ptr<update_tile_event>>(make_shared<update_tile_event>(id, tile_id));
+}
+

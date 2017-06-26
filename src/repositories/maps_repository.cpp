@@ -28,7 +28,7 @@ using namespace experimental;
 using namespace roa;
 using namespace pqxx;
 
-maps_repository::maps_repository(idatabase_pool& database_pool) : repository(database_pool) {
+maps_repository::maps_repository(shared_ptr<idatabase_pool> database_pool) : repository(database_pool) {
 
 }
 

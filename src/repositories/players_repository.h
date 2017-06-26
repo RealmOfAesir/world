@@ -124,7 +124,7 @@ namespace roa {
 
     class players_repository : public repository, public iplayers_repository {
     public:
-        explicit players_repository(idatabase_pool& database_pool);
+        explicit players_repository(std::shared_ptr<idatabase_pool> database_pool);
         players_repository(players_repository &repo);
         players_repository(players_repository &&repo);
         ~players_repository();

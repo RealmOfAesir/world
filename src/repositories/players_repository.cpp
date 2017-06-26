@@ -28,7 +28,7 @@ using namespace experimental;
 using namespace roa;
 using namespace pqxx;
 
-players_repository::players_repository(idatabase_pool& database_pool) : repository(database_pool) {
+players_repository::players_repository(shared_ptr<idatabase_pool> database_pool) : repository(database_pool) {
 
 }
 

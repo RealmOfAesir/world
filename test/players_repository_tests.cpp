@@ -30,18 +30,18 @@
 using namespace std;
 using namespace roa;
 
-auto backend_injector = boost::di::make_injector(
-        boost::di::bind<idatabase_transaction>.to<database_transaction>(),
-        boost::di::bind<idatabase_connection>.to<database_connection>(),
-        boost::di::bind<idatabase_pool>.to(db_pool),
-        boost::di::bind<irepository>.to<repository>(),
-        boost::di::bind<iplayers_repository>.to<players_repository>(),
-        boost::di::bind<imaps_repository>.to<maps_repository>(),
-        boost::di::bind<ilocations_repository>.to<locations_repository>(),
-        boost::di::bind<isettings_repository>.to<settings_repository>(),
-        boost::di::bind<iscript_zones_repository>.to<script_zones_repository>());
-
 TEST_CASE("players repository tests") {
+    auto backend_injector = boost::di::make_injector(
+            boost::di::bind<idatabase_transaction>.to<database_transaction>(),
+            boost::di::bind<idatabase_connection>.to<database_connection>(),
+            boost::di::bind<idatabase_pool>.to(db_pool),
+            boost::di::bind<irepository>.to<repository>(),
+            boost::di::bind<iplayers_repository>.to<players_repository>(),
+            boost::di::bind<imaps_repository>.to<maps_repository>(),
+            boost::di::bind<ilocations_repository>.to<locations_repository>(),
+            boost::di::bind<isettings_repository>.to<settings_repository>(),
+            boost::di::bind<iscript_zones_repository>.to<script_zones_repository>());
+
     players_repository players_repo = backend_injector.create<players_repository>();
     maps_repository maps_repo = backend_injector.create<maps_repository>();
     locations_repository locations_repo = backend_injector.create<locations_repository>();

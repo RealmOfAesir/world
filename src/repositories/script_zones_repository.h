@@ -62,7 +62,7 @@ namespace roa {
 
     class script_zones_repository : public repository, public iscript_zones_repository {
     public:
-        explicit script_zones_repository(idatabase_pool& database_pool);
+        explicit script_zones_repository(std::shared_ptr<idatabase_pool> database_pool);
         script_zones_repository(script_zones_repository &repo);
         script_zones_repository(script_zones_repository &&repo);
         ~script_zones_repository();

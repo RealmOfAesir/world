@@ -1,5 +1,5 @@
 /*
-    Realm of Aesir
+    Realm of Aesir backend
     Copyright (C) 2016  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,24 @@
 
 #pragma once
 
-#include "../../src/config.h"
-#include <database_pool.h>
-
 namespace roa {
-    extern Config config;
-    extern std::shared_ptr<database_pool> db_pool;
+    enum trigger_type_enum {
+        once,
+        looped,
+        chat,
+        movement
+    };
+
+    struct script_component {
+        script_component(std::string script_text, uint32_t execute_in_ms, uint32_t loop_every_ms, trigger_type_enum trigger_type)
+                : script_text(script_text), times_executed(0), execute_in_ms(execute_in_ms),
+                  loop_every_ms(loop_every_ms), trigger_type(trigger_type)
+        {}
+
+        std::string script_text;
+        uint32_t times_executed;
+        uint32_t execute_in_ms;
+        uint32_t loop_every_ms;
+        trigger_type_enum trigger_type;
+    };
 }

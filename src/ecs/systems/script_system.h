@@ -1,5 +1,5 @@
 /*
-    Realm of Aesir
+    Realm of Aesir backend
     Copyright (C) 2016  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,20 @@
 
 #pragma once
 
-#include "../../src/config.h"
-#include <database_pool.h>
+#include <entityx/entityx.h>
+#include <config.h>
+#include <queue>
 
 namespace roa {
-    extern Config config;
-    extern std::shared_ptr<database_pool> db_pool;
+    class script_system : public entityx::System<script_system> {
+    public:
+        script_system(Config& config)
+                : _config(config) {}
+        virtual ~script_system() {}
+
+        void update(entityx::EntityManager &es, entityx::EventManager &events, entityx::TimeDelta dt) override;
+    private:
+        Config& _config;
+
+    };
 }

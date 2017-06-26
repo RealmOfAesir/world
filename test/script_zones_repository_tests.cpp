@@ -27,15 +27,15 @@
 using namespace std;
 using namespace roa;
 
-auto backend_injector = boost::di::make_injector(
-        boost::di::bind<idatabase_transaction>.to<database_transaction>(),
-        boost::di::bind<idatabase_connection>.to<database_connection>(),
-        boost::di::bind<idatabase_pool>.to(db_pool),
-        boost::di::bind<irepository>.to<repository>(),
-        boost::di::bind<imaps_repository>.to<maps_repository>(),
-        boost::di::bind<iscript_zones_repository>.to<script_zones_repository>());
-
 TEST_CASE("script zones repository tests") {
+    auto backend_injector = boost::di::make_injector(
+            boost::di::bind<idatabase_transaction>.to<database_transaction>(),
+            boost::di::bind<idatabase_connection>.to<database_connection>(),
+            boost::di::bind<idatabase_pool>.to(db_pool),
+            boost::di::bind<irepository>.to<repository>(),
+            boost::di::bind<imaps_repository>.to<maps_repository>(),
+            boost::di::bind<iscript_zones_repository>.to<script_zones_repository>());
+
     maps_repository maps_repo = backend_injector.create<maps_repository>();
     script_zones_repository script_zones_repo = backend_injector.create<script_zones_repository>();
     auto transaction = script_zones_repo.create_transaction();

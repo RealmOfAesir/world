@@ -1,5 +1,5 @@
 /*
-    Realm of Aesir
+    Realm of Aesir backend
     Copyright (C) 2016  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include "../../src/config.h"
-#include <database_pool.h>
-
 namespace roa {
-    extern Config config;
-    extern std::shared_ptr<database_pool> db_pool;
+    struct character_component {
+        character_component(uint32_t user_id) : user_id(user_id) {}
+
+        uint32_t user_id;
+    };
 }

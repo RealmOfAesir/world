@@ -23,42 +23,45 @@
 #include "repository.h"
 
 namespace roa {
-    struct setting {
+    struct script {
+        script() = default;
+        script(std::string name, std::string text) : name(name), text(text) {}
+
         std::string name;
-        std::string value;
+        std::string text;
     };
 
-    class isettings_repository : public irepository {
+    class iscripts_repository : public irepository {
     public:
-        virtual ~isettings_repository() = default;
+        virtual ~iscripts_repository() = default;
 
         /**
-         * Insert or update setting
-         * @param sett
+         * Insert or update script
+         * @param scr
          * @param transaction
          * @return true if inserted, false if updated
          */
-        virtual bool insert_or_update_setting(setting& sett, std::unique_ptr<idatabase_transaction> const &transaction) = 0;
+        virtual bool insert_or_update_script(script& scr, std::unique_ptr<idatabase_transaction> const &transaction) = 0;
 
         /**
-         * Get setting by name
-         * @param name name of setting
+         * Get script by name
+         * @param name name of script
          * @param transaction
          * @return setting if found, {} if not
          */
-        virtual STD_OPTIONAL<setting> get_setting(std::string const & name, std::unique_ptr<idatabase_transaction> const &transaction) = 0;
+        virtual STD_OPTIONAL<script> get_script(std::string const & name, std::unique_ptr<idatabase_transaction> const &transaction) = 0;
     };
 
-    class settings_repository : public repository, public isettings_repository {
+    class scripts_repository : public repository, public iscripts_repository {
     public:
-        explicit settings_repository(std::shared_ptr<idatabase_pool> database_pool);
-        settings_repository(settings_repository &repo);
-        settings_repository(settings_repository &&repo);
-        ~settings_repository();
+        explicit scripts_repository(std::shared_ptr<idatabase_pool> database_pool);
+        scripts_repository(scripts_repository &repo);
+        scripts_repository(scripts_repository &&repo);
+        ~scripts_repository();
 
         auto create_transaction() -> decltype(repository::create_transaction()) override;
 
-        bool insert_or_update_setting(setting& sett, std::unique_ptr<idatabase_transaction> const &transaction) override;
-        STD_OPTIONAL<setting> get_setting(std::string const & name, std::unique_ptr<idatabase_transaction> const &transaction) override;
+        bool insert_or_update_script(script& scr, std::unique_ptr<idatabase_transaction> const &transaction) override;
+        STD_OPTIONAL<script> get_script(std::string const & name, std::unique_ptr<idatabase_transaction> const &transaction) override;
     };
 }
