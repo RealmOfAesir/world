@@ -19,10 +19,18 @@
 #pragma once
 
 namespace roa {
-    struct tile_component {
-        tile_component(uint64_t map_id, uint32_t tile_id) : map_id(map_id), tile_id(tile_id) {}
+    struct stat_component {
+        stat_component(uint64_t user_id) : user_id(user_id) {}
 
-        uint64_t map_id;
-        uint32_t tile_id;
+        std::string name;
+        uint64_t static_value;
+        uint32_t dice;
+        uint32_t die_face;
+        player_id BIGINT NOT NULL,
+                stat_id INT NOT NULL,
+        is_growth BOOLEAN NOT NULL,
+                static_value BIGINT NOT NULL,
+        dice INT NULL,
+        die_face INT NULL
     };
 }

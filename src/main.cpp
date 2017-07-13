@@ -171,6 +171,8 @@ STD_OPTIONAL<Config> parse_env_file() {
         return {};
     }
 
+    config.debug_roa_library = false;
+
     return config;
 }
 
@@ -240,7 +242,7 @@ unique_ptr<thread> create_world_thread(Config& config, shared_ptr<database_pool>
             if(now < next_tick) {
                 this_thread::sleep_until(next_tick);
             }
-            w.do_tick();
+            w.do_tick(config.tick_length);
             next_tick = second_next_tick;
             second_next_tick = second_next_tick + chrono::milliseconds(config.tick_length);
         }

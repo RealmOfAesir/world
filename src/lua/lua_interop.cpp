@@ -25,8 +25,7 @@ namespace roa {
     string library_script;
 
     lua_State *load_script_with_libraries(string script) {
-        int status, result, i;
-        double sum;
+        int status;
         lua_State *L;
 
         L = luaL_newstate();
@@ -36,12 +35,21 @@ namespace roa {
         status = luaL_loadstring(L, library_script.c_str());
         if (status) {
             LOG(ERROR) << "Couldn't load library script: " << lua_tostring(L, -1);
+            lua_close(L);
             throw runtime_error("Couldn't load library script");
+        }
+
+        status = lua_pcall(L, 0, LUA_MULTRET, 0);
+        if (status) {
+            LOG(ERROR) << "Couldn't run library script: " << lua_tostring(L, -1);
+            lua_close(L);
+            throw runtime_error("Couldn't run library script");
         }
 
         status = luaL_loadstring(L, script.c_str());
         if (status) {
             LOG(ERROR) << "Couldn't load script: " << lua_tostring(L, -1);
+            lua_close(L);
             throw runtime_error("Couldn't load script");
         }
 

@@ -27,6 +27,7 @@ namespace roa {
         uint32_t server_id;
         std::string connection_string;
         std::string debug_level;
+        bool debug_roa_library;
         std::string world_name;
         uint32_t tick_length;
     };

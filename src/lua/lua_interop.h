@@ -28,16 +28,18 @@ namespace roa {
     class event_type {
     public:
         explicit event_type(uint32_t type) : type(type) {}
+        virtual ~event_type() {};
         uint32_t type;
     };
 
     class update_tile_event : public event_type {
     public:
         update_tile_event() = default;
-        update_tile_event(uint32_t id, uint32_t tile_id) : event_type(update_tile_event::type), id(id), tile_id(tile_id) {}
+        update_tile_event(uint64_t id, uint32_t tile_id) : event_type(update_tile_event::type), id(id), tile_id(tile_id) {}
+        virtual ~update_tile_event() {}
 
         static constexpr uint32_t type = 1;
-        uint32_t id;
+        uint64_t id;
         uint32_t tile_id;
     };
 }

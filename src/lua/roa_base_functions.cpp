@@ -33,13 +33,16 @@ extern "C" void roa_log(int level, char const *message) {
         case 1:
             LOG(INFO) << message;
             break;
-        default:
+        case 2:
             LOG(WARNING) << message;
+            break;
+        default:
+            LOG(ERROR) << message;
             break;
     }
 }
 
-extern "C" void set_tile_properties(uint32_t id, uint32_t tile_id) {
+extern "C" void set_tile_properties(uint64_t id, uint32_t tile_id) {
     _script_event_queue.emplace<shared_ptr<update_tile_event>>(make_shared<update_tile_event>(id, tile_id));
 }
 

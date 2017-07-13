@@ -23,59 +23,130 @@
 #include <easylogging++.h>
 #include <macros.h>
 #include <lua/lua_interop.h>
+#include <ecs/components/position_component.h>
+#include <ecs/components/map_component.h>
+#include <custom_optional.h>
 
 using namespace std;
+using namespace experimental;
 using namespace roa;
 
 queue<shared_ptr<event_type>> _script_event_queue;
 
+enum entity_types {
+    tile = 1,
+    character = 2
+};
+
+STD_OPTIONAL<entityx::Entity> get_map_entity_from_id(entityx::EntityManager &es, uint32_t map_id) {
+    STD_OPTIONAL<entityx::Entity> ret;
+    es.each<map_component>([&](entityx::Entity entity, map_component& map) {
+        if(map.id == map_id) {
+            ret = make_optional(entity);
+        }
+    });
+
+    return ret;
+}
+
 void script_system::update(entityx::EntityManager &es, entityx::EventManager &events, entityx::TimeDelta dt) {
     int updated_scripts = 0;
+    auto start = chrono::high_resolution_clock::now();
     es.each<script_component>([&](entityx::Entity entity, script_component& script) {
-        if(script.execute_in_ms <= _config.tick_length) {
+        if(script.execute_in_ms <= dt) {
 
             auto tile_handle = entity.component<tile_component>();
             auto character_handle = entity.component<character_component>();
 
-            LOG(INFO) << NAMEOF(script_system::update) << " setting up script";
+            LOG(DEBUG) << NAMEOF(script_system::update) << " setting up script";
 
             auto L = load_script_with_libraries(script.script_text);
 
             lua_newtable(L);
 
             lua_pushstring(L, "debug");
-            lua_pushboolean(L, false);
+            lua_pushboolean(L, script.debug);
             lua_rawset(L, -3);
 
-            lua_setglobal(L, "settings");
+            lua_pushstring(L, "library_debug");
+            lua_pushboolean(L, _config.debug_roa_library);
+            lua_rawset(L, -3);
+
+            lua_setglobal(L, "roa_settings");
 
             lua_newtable(L);
 
-            lua_pushstring(L, "tile_id");
-            lua_pushinteger(L, tile_handle->tile_id);
-            lua_rawset(L, -3);
+            if(tile_handle) {
+                lua_pushstring(L, "tile_id");
+                lua_pushinteger(L, tile_handle->tile_id);
+                lua_rawset(L, -3);
 
-            lua_pushstring(L, "id");
-            lua_pushinteger(L, tile_handle->id);
-            lua_rawset(L, -3);
+                lua_pushstring(L, "id");
+                lua_pushinteger(L, entity.id().id());
+                lua_rawset(L, -3);
 
-            lua_pushstring(L, "type");
-            lua_pushinteger(L, 1);
-            lua_rawset(L, -3);
+                lua_pushstring(L, "type");
+                lua_pushinteger(L, entity_types::tile);
+                lua_rawset(L, -3);
+            } else {
+                lua_pushstring(L, "user_id");
+                lua_pushinteger(L, character_handle->user_id);
+                lua_rawset(L, -3);
 
-            lua_setglobal(L, "entity");
+                lua_pushstring(L, "id");
+                lua_pushinteger(L, entity.id().id());
+                lua_rawset(L, -3);
 
-            lua_newtable(L);
+                lua_pushstring(L, "type");
+                lua_pushinteger(L, entity_types::character);
+                lua_rawset(L, -3);
+            }
 
-            lua_pushstring(L, "first_tile_id");
-            lua_pushinteger(L, 1);
-            lua_rawset(L, -3);
+            lua_setglobal(L, "roa_entity");
 
-            lua_pushstring(L, "max_tile_id");
-            lua_pushinteger(L, 10);
-            lua_rawset(L, -3);
+            if(!script.global) {
+                uint64_t map_id;
 
-            lua_setglobal(L, "map");
+                if(tile_handle) {
+                    map_id = tile_handle->map_id;
+                } else {
+                    map_id = character_handle->map_id;
+                }
+
+                auto map_entity = get_map_entity_from_id(es, map_id);
+
+                if(!map_entity) {
+                    LOG(ERROR) << "non-global script without map entity " << map_id;
+                    lua_close(L);
+                    return;
+                }
+
+                auto map_handle = map_entity->component<map_component>();
+
+                lua_newtable(L);
+
+                lua_pushstring(L, "id");
+                lua_pushinteger(L, map_entity->id().id());
+                lua_rawset(L, -3);
+
+                lua_pushstring(L, "first_tile_id");
+                lua_pushinteger(L, map_handle->first_tile_id);
+                lua_rawset(L, -3);
+
+                lua_pushstring(L, "max_tile_id");
+                lua_pushinteger(L, map_handle->max_tile_id);
+                lua_rawset(L, -3);
+
+                lua_pushstring(L, "width");
+                lua_pushinteger(L, map_handle->width);
+                lua_rawset(L, -3);
+
+                lua_pushstring(L, "height");
+                lua_pushinteger(L, map_handle->height);
+                lua_rawset(L, -3);
+
+                lua_setglobal(L, "roa_map");
+            }
 
             auto result = lua_pcall(L, 0, LUA_MULTRET, 0);
             if (result) {
@@ -86,29 +157,27 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
             lua_close(L);
 
             updated_scripts++;
-            script.execute_in_ms = script.loop_every_ms - (_config.tick_length - script.execute_in_ms);
+            script.execute_in_ms = script.loop_every_ms - (dt - script.execute_in_ms);
         } else {
-            script.execute_in_ms -= _config.tick_length;
+            script.execute_in_ms -= dt;
         }
 
         while(!_script_event_queue.empty()) {
             auto event = _script_event_queue.front();
 
             if(event->type == update_tile_event::type) {
-                update_tile_event* update_event = static_cast<update_tile_event*>(event.get());
+                update_tile_event* update_event = dynamic_cast<update_tile_event*>(event.get());
                 if(update_event != nullptr) {
-                    entityx::ComponentHandle<tile_component> tile;
-                    for(entityx::Entity entity : es.entities_with_components(tile)) {
-                        if(tile->id == update_event->id) {
-                            tile->tile_id = update_event->tile_id;
-                            break;
-                        }
-                    };
+                    entityx::Entity tile_entity = es.get(entityx::Entity::Id(update_event->id));
+                    auto tile_handle = tile_entity.component<tile_component>();
+                    LOG(DEBUG) << NAMEOF(script_system::update) << " updating tile " << tile_entity.id().id() << " map_id " << tile_handle->map_id << " new tile_id " << update_event->tile_id;
+                    tile_handle->tile_id = update_event->tile_id;
                 }
             }
 
             _script_event_queue.pop();
         }
     });
-    LOG(INFO) << NAMEOF(script_system::update) << " ran " << updated_scripts << " scripts";
+    auto end = chrono::high_resolution_clock::now();
+    LOG(INFO) << NAMEOF(script_system::update) << " ran " << updated_scripts << " scripts in " << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
 }

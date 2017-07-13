@@ -23,7 +23,6 @@
 
 namespace roa {
     struct tileset {
-        tileset() = default;
         tileset(uint32_t first_gid, std::string image_path, uint32_t tile_width, uint32_t tile_height,
                 uint32_t width, uint32_t height) : first_gid(first_gid), image_path(image_path), tile_width(tile_width),
                                                    tile_height(tile_height), width(width), height(height) {}
@@ -38,9 +37,9 @@ namespace roa {
 
     struct map_component {
         map_component(uint32_t id, uint32_t tile_height, uint32_t tile_width,
-                      uint32_t width, uint32_t height, uint32_t layers)
+                      uint32_t width, uint32_t height, uint32_t layers, uint32_t first_tile_id, uint32_t max_tile_id)
                 : id(id), tile_height(tile_height), tile_width(tile_width),
-                  width(width), height(height), layers(layers)
+                  width(width), height(height), layers(layers), first_tile_id(first_tile_id), max_tile_id(max_tile_id)
         {}
 
         uint32_t const id;
@@ -49,6 +48,8 @@ namespace roa {
         uint32_t const width;
         uint32_t const height;
         uint32_t const layers;
+        uint32_t const first_tile_id;
+        uint32_t const max_tile_id;
         std::vector<tileset> tilesets;
         std::vector<std::vector<std::vector<entityx::Entity>>> tiles;
         std::vector<entityx::Entity> npcs;

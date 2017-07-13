@@ -26,7 +26,7 @@ namespace roa {
     class world {
     public:
 
-        void do_tick();
+        void do_tick(uint32_t tick_length);
         void load_from_database(std::shared_ptr<idatabase_pool> db_pool, Config& config);
 
     private:

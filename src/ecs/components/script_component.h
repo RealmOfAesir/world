@@ -27,15 +27,18 @@ namespace roa {
     };
 
     struct script_component {
-        script_component(std::string script_text, uint32_t execute_in_ms, uint32_t loop_every_ms, trigger_type_enum trigger_type)
-                : script_text(script_text), times_executed(0), execute_in_ms(execute_in_ms),
-                  loop_every_ms(loop_every_ms), trigger_type(trigger_type)
-        {}
+        script_component(std::string name, std::string script_text, uint32_t execute_in_ms, uint32_t loop_every_ms,
+                         trigger_type_enum trigger_type, bool debug)
+                : name(name), script_text(script_text), times_executed(0), execute_in_ms(execute_in_ms),
+                  loop_every_ms(loop_every_ms), trigger_type(trigger_type), debug(debug) {}
 
+        std::string name;
         std::string script_text;
         uint32_t times_executed;
         uint32_t execute_in_ms;
         uint32_t loop_every_ms;
         trigger_type_enum trigger_type;
+        bool global;
+        bool debug;
     };
 }

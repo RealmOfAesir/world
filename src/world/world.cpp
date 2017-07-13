@@ -31,11 +31,9 @@ using namespace std;
 using namespace roa;
 using namespace entityx;
 
-uint32_t tile_id_counter = 0;
-
-void world::do_tick() {
+void world::do_tick(uint32_t tick_length) {
     LOG(DEBUG) << NAMEOF(world::do_tick) << " starting tick";
-    _ex.systems.update_all(1);
+    _ex.systems.update_all(tick_length);
     LOG(DEBUG) << NAMEOF(world::do_tick) << " finished tick";
 }
 
@@ -54,7 +52,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     _ex.systems.configure();
 
     Entity map_entity = _ex.entities.create();
-    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1);
+    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 10);
     ComponentHandle<map_component> mc = map_entity.component<map_component>();
 
     mc->tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
@@ -62,10 +60,10 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     mc->tiles.resize(1);
     mc->tiles[0].resize(100);
 
-    for(uint32_t x = 0; x < 10; x++) {
-        for(uint32_t y = 0; y < 10; y++) {
+    for(uint32_t x = 0; x < 25; x++) {
+        for(uint32_t y = 0; y < 25; y++) {
             Entity tile_entity = _ex.entities.create();
-            tile_entity.assign<tile_component>(tile_id_counter++, y+1);
+            tile_entity.assign<tile_component>(map_entity.id().id(), y+1);
             mc->tiles[0][x].push_back(tile_entity);
         }
     }
@@ -81,9 +79,9 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
         auto transaction = scripts_repo.create_transaction();
         auto script = scripts_repo.get_script("test_tile_script", get<1>(transaction));
 
-        for(uint32_t x = 0; x < 10; x++) {
-            for(uint32_t y = 0; y < 10; y++) {
-                mc->tiles[0][x][y].assign<script_component>(script->text, 500, 500, trigger_type_enum::looped);
+        for(uint32_t x = 0; x < 25; x++) {
+            for(uint32_t y = 0; y < 25; y++) {
+                mc->tiles[0][x][y].assign<script_component>(script->name, script->text, 500, 500, trigger_type_enum::looped, false);
             }
         }
     }
