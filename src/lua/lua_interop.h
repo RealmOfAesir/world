@@ -20,9 +20,10 @@
 
 #include <lua.hpp>
 #include <iostream>
+#include "lua_script.h"
 
 namespace roa {
-    lua_State* load_script_with_libraries(std::string script);
+    lua_script load_script_with_libraries(std::string script);
     void set_library_script(std::string script);
 
     class event_type {

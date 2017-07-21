@@ -26,6 +26,7 @@
 #include "../ecs/components/script_component.h"
 #include <easylogging++.h>
 #include <macros.h>
+#include <lua/lua_interop.h>
 
 using namespace std;
 using namespace roa;
@@ -52,7 +53,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     _ex.systems.configure();
 
     Entity map_entity = _ex.entities.create();
-    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 10);
+    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 1000);
     ComponentHandle<map_component> mc = map_entity.component<map_component>();
 
     mc->tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
@@ -81,7 +82,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
 
         for(uint32_t x = 0; x < 25; x++) {
             for(uint32_t y = 0; y < 25; y++) {
-                mc->tiles[0][x][y].assign<script_component>(script->name, script->text, 500, 500, trigger_type_enum::looped, false);
+                mc->tiles[0][x][y].assign<script_component>(script->name, load_script_with_libraries(script->text), 500, 500, trigger_type_enum::looped, false);
             }
         }
     }

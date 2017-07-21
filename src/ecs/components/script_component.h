@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "../../lua/lua_script.h"
+
 namespace roa {
     enum trigger_type_enum {
         once,
@@ -27,13 +29,18 @@ namespace roa {
     };
 
     struct script_component {
-        script_component(std::string name, std::string script_text, uint32_t execute_in_ms, uint32_t loop_every_ms,
+        script_component(std::string name, lua_script script, uint32_t execute_in_ms, uint32_t loop_every_ms,
                          trigger_type_enum trigger_type, bool debug)
-                : name(name), script_text(script_text), times_executed(0), execute_in_ms(execute_in_ms),
+                : name(name), script(std::move(script)), times_executed(0), execute_in_ms(execute_in_ms),
                   loop_every_ms(loop_every_ms), trigger_type(trigger_type), debug(debug) {}
+        /*script_component(script_component const &sc) = delete;
+        script_component(script_component &&sc) noexcept
+                : name(sc.name), script(std::move(sc.script)), times_executed(sc.times_executed),
+                  execute_in_ms(sc.execute_in_ms), loop_every_ms(sc.loop_every_ms), trigger_type(sc.trigger_type),
+                  global(sc.global), debug(sc.debug) {}*/
 
         std::string name;
-        std::string script_text;
+        lua_script script;
         uint32_t times_executed;
         uint32_t execute_in_ms;
         uint32_t loop_every_ms;

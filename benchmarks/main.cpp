@@ -21,13 +21,46 @@
 #include <chrono>
 #include <macros.h>
 
+#include <unistd.h>
+
 INITIALIZE_EASYLOGGINGPP
 
 using namespace std;
 using namespace roa;
 
-void benchmark_loading_and_running_lua()
-{
+void print_process_mem_usage(string stuff) {
+    using std::ios_base;
+    using std::ifstream;
+    using std::string;
+
+    // 'file' stat seems to give the most reliable results
+    //
+    ifstream stat_stream("/proc/self/stat", ios_base::in);
+
+    // dummy vars for leading entries in stat that we don't care about
+    //
+    string pid, comm, state, ppid, pgrp, session, tty_nr;
+    string tpgid, flags, minflt, cminflt, majflt, cmajflt;
+    string utime, stime, cutime, cstime, priority, nice;
+    string O, itrealvalue, starttime;
+
+    // the two fields we want
+    //
+    unsigned long vsize;
+    long rss;
+
+    stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
+                >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
+                >> utime >> stime >> cutime >> cstime >> priority >> nice
+                >> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
+
+    stat_stream.close();
+
+    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
+    LOG(INFO) << stuff << " VM: " << (vsize / 1024.0) << " - RSS: " << rss * page_size_kb;
+}
+
+void benchmark_loading_and_running_lua() {
     std::string lib;
     std::string src_file;
 
@@ -52,73 +85,46 @@ void benchmark_loading_and_running_lua()
     }
 
     set_library_script(lib);
+    lua_script L = load_script_with_libraries(src_file);
+
+    print_process_mem_usage("start mem: ");
+
     auto start = chrono::high_resolution_clock::now();
-    for(int i = 0; i < 5000; i++) {
-        auto L = load_script_with_libraries(src_file);
+    for (int i = 0; i < 5000; i++) {
+        L.load();
 
-        lua_newtable(L);
+        L.create_table();
 
-        lua_pushstring(L, "debug");
-        lua_pushboolean(L, true);
-        lua_rawset(L, -3);
+        L.push_boolean("debug", false);
+        L.push_boolean("library_debug", false);
 
-        lua_pushstring(L, "library_debug");
-        lua_pushboolean(L, false);
-        lua_rawset(L, -3);
+        L.set_global("roa_settings");
 
-        lua_setglobal(L, "roa_settings");
+        L.create_table();
 
-        lua_newtable(L);
+        L.push_integer("tile_id", 1);
+        L.push_integer("id", 1);
+        L.push_integer("type", 1);
 
-        lua_pushstring(L, "tile_id");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        L.set_global("roa_entity");
 
-        lua_pushstring(L, "id");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        L.create_table();
 
-        lua_pushstring(L, "type");
-        lua_pushinteger(L, 1);
-        lua_rawset(L, -3);
+        L.push_integer("tile_id", 2);
+        L.push_integer("first_tile_id", 2);
+        L.push_integer("max_tile_id", 2);
+        L.push_integer("width", 2);
+        L.push_integer("height", 2);
 
-        lua_setglobal(L, "roa_entity");
-
-        lua_newtable(L);
-
-        lua_pushstring(L, "id");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
-
-        lua_pushstring(L, "first_tile_id");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
-
-        lua_pushstring(L, "max_tile_id");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
-
-        lua_pushstring(L, "width");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
-
-        lua_pushstring(L, "height");
-        lua_pushinteger(L, 2);
-        lua_rawset(L, -3);
-
-        lua_setglobal(L, "roa_map");
-
-        auto result = lua_pcall(L, 0, LUA_MULTRET, 0);
-        if (result) {
-            LOG(ERROR) << " Failed to run script: " << lua_tostring(L, -1);
-            lua_close(L);
-            throw runtime_error("Failed to run script");
-        }
-        lua_close(L);
+        L.set_global("roa_map");
+        L.run();
     }
     auto end = chrono::high_resolution_clock::now();
 
-    LOG(INFO) << NAMEOF(benchmark_loading_and_running_lua) << " time required to run: " << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
+    print_process_mem_usage("end mem: ");
+
+    LOG(INFO) << NAMEOF(benchmark_loading_and_running_lua) << " time required to run: "
+              << chrono::duration_cast<chrono::milliseconds>((end - start)).count() << " ms";
 }
 
 void init_stuff() {
@@ -126,10 +132,12 @@ void init_stuff() {
 
     el::Configurations defaultConf;
     defaultConf.setGlobally(el::ConfigurationType::Format, "%datetime %level: %msg");
+    //defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    //defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
     el::Loggers::reconfigureAllLoggers(defaultConf);
 }
 
-int main(int argc, char const * const * argv) {
+int main(int argc, char const *const *argv) {
     init_stuff();
 
     benchmark_loading_and_running_lua();
