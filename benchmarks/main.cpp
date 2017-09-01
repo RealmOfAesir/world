@@ -65,7 +65,7 @@ void benchmark_loading_and_running_lua() {
     std::string src_file;
 
     {
-        std::ifstream lib_stream("test_library.lua");
+        std::ifstream lib_stream("scripts/roa_library.lua");
         lib_stream.seekg(0, std::ios::end);
         lib.reserve(lib_stream.tellg());
         lib_stream.seekg(0, std::ios::beg);
@@ -75,7 +75,7 @@ void benchmark_loading_and_running_lua() {
     }
 
     {
-        std::ifstream src_file_stream("test.lua");
+        std::ifstream src_file_stream("scripts/tile_id_upwards.lua");
         src_file_stream.seekg(0, std::ios::end);
         src_file.reserve(src_file_stream.tellg());
         src_file_stream.seekg(0, std::ios::beg);
