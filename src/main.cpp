@@ -74,7 +74,7 @@ void init_extras() noexcept {
 void init_logger(Config const config) noexcept {
     el::Configurations defaultConf;
     defaultConf.setGlobally(el::ConfigurationType::Format, "%datetime %level: %msg");
-    defaultConf.setGlobally(el::ConfigurationType::Filename, "logs/world-%datetime{%Y%M%d}.log");
+    defaultConf.setGlobally(el::ConfigurationType::Filename, "logs/world-%datetime{%Y%M%d%h%m}.log");
     if(!config.debug_level.empty()) {
         if(config.debug_level == "error") {
             defaultConf.set(el::Level::Warning, el::ConfigurationType::Enabled, "false");

@@ -18,20 +18,14 @@
 
 #pragma once
 
-#include <config.h>
-#include <queue>
-#include "ecs_system.h"
-
+#include "../ecs.h"
 namespace roa {
-    class script_system : public ecs_system {
+    class ecs_system {
     public:
-        script_system(Config& config)
-                : _config(config) {}
-        virtual ~script_system() override {};
+        ecs_system() = default;
 
-        void update(EntityManager &es, TimeDelta dt) override;
-    private:
-        Config& _config;
+        virtual ~ecs_system() = default;
 
+        virtual void update(EntityManager &es, TimeDelta dt) = 0;
     };
 }

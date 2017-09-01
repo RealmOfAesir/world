@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <entityx/entityx.h>
 #include <vector>
+#include <ecs/ecs.h>
 
 namespace roa {
     struct tileset {
@@ -27,12 +27,12 @@ namespace roa {
                 uint32_t width, uint32_t height) : first_gid(first_gid), image_path(image_path), tile_width(tile_width),
                                                    tile_height(tile_height), width(width), height(height) {}
 
-        uint32_t const first_gid;
-        std::string const image_path;
-        uint32_t const tile_width;
-        uint32_t const tile_height;
-        uint32_t const width;
-        uint32_t const height;
+        uint32_t first_gid;
+        std::string image_path;
+        uint32_t tile_width;
+        uint32_t tile_height;
+        uint32_t width;
+        uint32_t height;
     };
 
     struct map_component {
@@ -42,18 +42,18 @@ namespace roa {
                   width(width), height(height), layers(layers), first_tile_id(first_tile_id), max_tile_id(max_tile_id)
         {}
 
-        uint32_t const id;
-        uint32_t const tile_height;
-        uint32_t const tile_width;
-        uint32_t const width;
-        uint32_t const height;
-        uint32_t const layers;
-        uint32_t const first_tile_id;
-        uint32_t const max_tile_id;
+        uint32_t id;
+        uint32_t tile_height;
+        uint32_t tile_width;
+        uint32_t width;
+        uint32_t height;
+        uint32_t layers;
+        uint32_t first_tile_id;
+        uint32_t max_tile_id;
         std::vector<tileset> tilesets;
-        std::vector<std::vector<std::vector<entityx::Entity>>> tiles;
-        std::vector<entityx::Entity> npcs;
-        std::vector<entityx::Entity> pcs;
-        std::vector<entityx::Entity> items;
+        std::vector<std::vector<std::vector<uint64_t>>> tiles;
+        std::vector<uint64_t> npcs;
+        std::vector<uint64_t> pcs;
+        std::vector<uint64_t> items;
     };
 }

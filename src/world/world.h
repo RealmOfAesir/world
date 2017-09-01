@@ -18,9 +18,10 @@
 
 #pragma once
 
-#include <entityx/entityx.h>
 #include <vector>
 #include <database_pool.h>
+#include <config.h>
+#include <ecs/systems/ecs_system.h>
 
 namespace roa {
     class world {
@@ -30,7 +31,7 @@ namespace roa {
         void load_from_database(std::shared_ptr<idatabase_pool> db_pool, Config& config);
 
     private:
-        entityx::EntityX _ex;
-        std::vector<entityx::Entity> _maps;
+        EntityManager _ex;
+        std::vector<std::unique_ptr<ecs_system>> _systems;
     };
 }

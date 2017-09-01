@@ -39,6 +39,8 @@ namespace roa {
                 : name(sc.name), script(std::move(sc.script)), times_executed(sc.times_executed),
                   execute_in_ms(sc.execute_in_ms), loop_every_ms(sc.loop_every_ms), trigger_type(sc.trigger_type),
                   global(sc.global), debug(sc.debug) {}*/
+        script_component& operator=(script_component&&) { return *this; };
+        script_component(const script_component&) = default;
 
         uint64_t id;
         lua_script script;
@@ -53,6 +55,8 @@ namespace roa {
     struct script_container_component {
         script_container_component() : scripts() {}
         script_container_component(std::unordered_map<uint64_t, script_component> scripts) : scripts(scripts) {}
+        script_container_component& operator=(script_container_component&&) { return *this; };
+        script_container_component(const script_container_component&) = default;
 
         inline void remove_by_id(uint64_t id) noexcept {
             scripts.erase(id);

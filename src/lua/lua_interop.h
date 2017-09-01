@@ -56,11 +56,12 @@ namespace roa {
     class destroy_script_event : public event_type {
     public:
         destroy_script_event() = default;
-        destroy_script_event(uint64_t id) : event_type(destroy_script_event::type), id(id) {}
+        destroy_script_event(uint64_t id, uint64_t attached_entity_id) : event_type(destroy_script_event::type), id(id), attached_entity_id(attached_entity_id) {}
         virtual ~destroy_script_event() {}
 
         static constexpr uint32_t type = 2;
         uint64_t id;
+        uint64_t attached_entity_id;
     };
 
     class create_script_event : public event_type {

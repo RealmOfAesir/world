@@ -18,23 +18,22 @@
 
 #include <repositories/scripts_repository.h>
 #include <boost/di.hpp>
-#include <ecs/systems/script_system.h>
+#include "../ecs/ecs.h"
 #include "world.h"
-#include "../ecs/components/position_component.h"
-#include "../ecs/components/map_component.h"
-#include "../ecs/components/tile_component.h"
-#include "../ecs/components/script_component.h"
 #include <easylogging++.h>
 #include <macros.h>
 #include <lua/lua_interop.h>
+#include <config.h>
+#include <ecs/systems/script_system.h>
 
 using namespace std;
 using namespace roa;
-using namespace entityx;
 
 void world::do_tick(uint32_t tick_length) {
     LOG(TRACE) << NAMEOF(world::do_tick) << " starting tick";
-    _ex.systems.update_all(tick_length);
+    for(auto& system : _systems) {
+        system->update(_ex, tick_length);
+    }
     LOG(TRACE) << NAMEOF(world::do_tick) << " finished tick";
 }
 
@@ -49,30 +48,28 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
             boost::di::bind<iscripts_repository>.to<scripts_repository>()
     );
 
-    _ex.systems.add<script_system>(config);
-    _ex.systems.configure();
+    _systems.emplace_back(make_unique<script_system>(config));
 
-    Entity map_entity = _ex.entities.create();
-    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 3);
-    ComponentHandle<map_component> mc = map_entity.component<map_component>();
+    auto map_entity = _ex.create();
+    auto& mc = _ex.assign<map_component>(map_entity, 0u, 64u, 64u, 640u, 640u, 1u, 1u, 3u);
 
-    mc->tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
+    mc.tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
 
-    mc->tiles.resize(1);
-    mc->tiles[0].resize(100);
+    mc.tiles.resize(1);
+    mc.tiles[0].resize(100);
 
     for(uint32_t x = 0; x < 100; x++) {
         for(uint32_t y = 0; y < 100; y++) {
-            Entity tile_entity = _ex.entities.create();
-            tile_entity.assign<tile_component>(map_entity.id().id(), y+1);
-            mc->tiles[0][x].push_back(tile_entity);
+            auto tile_entity = _ex.create();
+            _ex.assign<tile_component>(tile_entity, map_entity, y+1);
+            mc.tiles[0][x].push_back(tile_entity);
         }
     }
 
     for(uint32_t x = 0; x < 10; x++) {
-        Entity npc_entity = _ex.entities.create();
-        npc_entity.assign<position_component>(x, 0, mc->id);
-        mc->npcs.push_back(npc_entity);
+        auto npc_entity = _ex.create();
+        _ex.assign<position_component>(npc_entity, x, 0u, mc.id);
+        mc.npcs.push_back(npc_entity);
     }
 
     {
@@ -87,12 +84,12 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
 
         for(uint32_t x = 0; x < 100; x++) {
             for(uint32_t y = 0; y < 10; y++) {
-                Entity script_entity = _ex.entities.create();
-                mc->tiles[0][x][y].assign<script_container_component>(unordered_map<uint64_t, script_component>{
+                auto script_entity = _ex.create();
+                _ex.assign<script_container_component>(mc.tiles[0][x][y], unordered_map<uint64_t, script_component>{
                     {
-                        script_entity.id().id(),
+                        script_entity,
                         {
-                            script_entity.id().id(),
+                            script_entity,
                             load_script_with_libraries(scr->name, scr->text),
                             200, 200,
                             trigger_type_enum::looped,
@@ -105,5 +102,5 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
         }
     }
 
-    LOG(INFO) << NAMEOF(world::load_from_database) << " loaded world from db with " << _ex.entities.size() << " entities";
+    LOG(INFO) << NAMEOF(world::load_from_database) << " loaded world from db with " << _ex.size() << " entities";
 }

@@ -17,12 +17,6 @@
 */
 
 #include "script_system.h"
-#include "../components/script_component.h"
-#include "../components/tile_component.h"
-#include "../components/character_component.h"
-#include "../components/player_component.h"
-#include "../components/map_component.h"
-#include "../components/stat_component.h"
 #include <easylogging++.h>
 #include <macros.h>
 #include <lua/lua_interop.h>
@@ -41,42 +35,35 @@ enum entity_types {
     player = 3
 };
 
-STD_OPTIONAL<entityx::Entity> get_map_entity_from_id(entityx::EntityManager &es, uint32_t map_id) {
-    STD_OPTIONAL<entityx::Entity> ret;
-    es.each<map_component>([&](entityx::Entity entity, map_component& map) {
+STD_OPTIONAL<uint64_t> get_map_entity_from_id(EntityManager &es, uint32_t map_id) {
+    STD_OPTIONAL<uint64_t> ret;
+
+    for(auto entity : es.view<map_component>()) {
+        auto& map = es.get<map_component>(entity);
         if(map.id == map_id) {
             ret = make_optional(entity);
         }
-    });
+    }
 
     return ret;
 }
 
-void script_system::update(entityx::EntityManager &es, entityx::EventManager &events, entityx::TimeDelta dt) {
+void script_system::update(EntityManager &es, TimeDelta dt) {
     int updated_scripts = 0;
     int checked_entities = 0;
     int checked_scripts = 0;
     auto start = chrono::high_resolution_clock::now();
-    es.each<script_container_component>([&](entityx::Entity entity, script_container_component& script_container) {
+    for(auto entity : es.view<script_container_component>()) {
         checked_entities++;
-        LOG(TRACE) << NAMEOF(script_system::update) << " entity " << entity.id().id() << " with " << script_container.scripts.size() << " scripts";
+        auto& script_container = es.get<script_container_component>(entity);
+        LOG(TRACE) << NAMEOF(script_system::update) << " entity " << entity << " with " << script_container.scripts.size() << " scripts";
         for(auto& script_tuple : script_container.scripts) {
             auto& script = get<1>(script_tuple);
 
             LOG(TRACE) << NAMEOF(script_system::update) << " script " << script.id;
             checked_scripts++;
 
-            if (!es.valid(entityx::Entity::Id(script.id))) {
-                script_container.remove_by_id(script.id);
-                return;
-            }
-
             if (script.execute_in_ms <= dt) {
-                auto tile_handle = entity.component<tile_component>();
-                auto character_handle = entity.component<character_component>();
-                auto player_handle = entity.component<player_component>();
-                auto stats_handle = entity.component<stat_component>();
-
                 lua_script &lscript = script.script;
 
                 if (unlikely(!lscript.load())) {
@@ -92,24 +79,28 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
 
                 lscript.create_table();
 
-                if (tile_handle) {
-                    LOG(TRACE) << NAMEOF(script_system::update) << " tile handle " << tile_handle->tile_id;
-                    lscript.push_integer("tile_id", tile_handle->tile_id);
-                    lscript.push_integer("id", entity.id().id());
+                if (es.has<tile_component>(entity)) {
+                    auto& tile_handle = es.get<tile_component>(entity);
+                    LOG(TRACE) << NAMEOF(script_system::update) << " tile handle " << tile_handle.tile_id;
+                    lscript.push_integer("tile_id", tile_handle.tile_id);
+                    lscript.push_integer("id", entity);
                     lscript.push_integer("type", entity_types::tile);
-                } else {
-                    LOG(TRACE) << NAMEOF(script_system::update) << " player handle " << player_handle->user_id;
-                    if (player_handle) {
-                        lscript.push_integer("user_id", player_handle->user_id);
+                } else if (es.has<character_component>(entity)) {
+                    auto& stats_handle = es.get<stat_component>(entity);
+
+                    if (es.has<player_component>(entity)) {
+                        auto& player_handle = es.get<player_component>(entity);
+                        LOG(TRACE) << NAMEOF(script_system::update) << " player handle " << player_handle.user_id;
+                        lscript.push_integer("user_id", player_handle.user_id);
                         lscript.push_integer("type", entity_types::player);
                     } else {
                         lscript.push_integer("type", entity_types::character);
                     }
-                    lscript.push_integer("id", entity.id().id());
+                    lscript.push_integer("id", entity);
 
                     lscript.create_nested_table("stats");
 
-                    for (auto &stat : stats_handle->stats) {
+                    for (auto &stat : stats_handle.stats) {
                         if (!stat.is_growth) {
                             lscript.push_integer(stat.name, stat.static_value);
                         }
@@ -123,10 +114,12 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
                 if (!script.global) {
                     uint64_t map_id;
 
-                    if (tile_handle) {
-                        map_id = tile_handle->map_id;
-                    } else {
-                        map_id = character_handle->map_id;
+                    if (es.has<tile_component>(entity)) {
+                        auto& tile_handle = es.get<tile_component>(entity);
+                        map_id = tile_handle.map_id;
+                    } else if (es.has<character_component>(entity)) {
+                        auto& character_handle = es.get<character_component>(entity);
+                        map_id = character_handle.map_id;
                     }
 
                     LOG(TRACE) << NAMEOF(script_system::update) << " map handle " << map_id;
@@ -139,15 +132,15 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
                         return;
                     }
 
-                    auto map_handle = map_entity->component<map_component>();
+                    auto& map_handle = es.get<map_component>(map_entity.value());
 
                     lscript.create_table();
 
-                    lscript.push_integer("id", map_entity->id().id());
-                    lscript.push_integer("first_tile_id", map_handle->first_tile_id);
-                    lscript.push_integer("max_tile_id", map_handle->max_tile_id);
-                    lscript.push_integer("width", map_handle->width);
-                    lscript.push_integer("height", map_handle->height);
+                    lscript.push_integer("id", map_entity.value());
+                    lscript.push_integer("first_tile_id", map_handle.first_tile_id);
+                    lscript.push_integer("max_tile_id", map_handle.max_tile_id);
+                    lscript.push_integer("width", map_handle.width);
+                    lscript.push_integer("height", map_handle.height);
 
                     lscript.set_global("roa_map");
                 }
@@ -155,11 +148,12 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
                 lscript.create_table();
 
                 lscript.push_integer("id", script.id);
+                lscript.push_integer("attached_entity_id", entity);
                 lscript.push_string("name", script.script.name());
 
                 lscript.set_global("roa_script");
 
-                if (!lscript.run()) {
+                if (unlikely(!lscript.run())) {
                     return;
                 }
 
@@ -169,7 +163,7 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
                 script.execute_in_ms -= dt;
             }
         }
-    });
+    }
     auto end = chrono::high_resolution_clock::now();
     LOG(INFO) << NAMEOF(script_system::update) << " checked " << checked_entities << " entities, " << checked_scripts << " scripts and ran " << updated_scripts << " scripts in "
               << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
@@ -188,66 +182,70 @@ void script_system::update(entityx::EntityManager &es, entityx::EventManager &ev
                 update_tile_events++;
                 update_tile_event *update_event = dynamic_cast<update_tile_event *>(event.get());
 
-                if (update_event == nullptr) {
+                if (unlikely(update_event == nullptr)) {
                     LOG(WARNING) << NAMEOF(script_system::update) << " expected event type update_tile_event but couldn't cast";
                     break;
                 }
 
-                if(!es.valid(entityx::Entity::Id(update_event->id))) {
+                if(unlikely(!es.valid(update_event->id))) {
                     LOG(ERROR) << NAMEOF(script_system::update) << " tried updating non-existing entity";
                     break;
                 }
 
-                entityx::Entity tile_entity = es.get(entityx::Entity::Id(update_event->id));
-                auto tile_handle = tile_entity.component<tile_component>();
-                LOG(TRACE) << NAMEOF(script_system::update) << " updating tile " << tile_entity.id().id()
-                           << " map_id " << tile_handle->map_id << " new tile_id " << update_event->tile_id;
-                tile_handle->tile_id = update_event->tile_id;
+                auto& tile_handle = es.get<tile_component>(update_event->id);
+                LOG(TRACE) << NAMEOF(script_system::update) << " updating tile " << update_event->id
+                           << " map_id " << tile_handle.map_id << " new tile_id " << update_event->tile_id;
+                tile_handle.tile_id = update_event->tile_id;
             }
                 break;
             case destroy_script_event::type: {
                 destroy_script_events++;
                 destroy_script_event *destroy_event = dynamic_cast<destroy_script_event *>(event.get());
 
-                if (destroy_event == nullptr) {
+                if (unlikely(destroy_event == nullptr)) {
                     LOG(WARNING) << NAMEOF(script_system::update) << " expected event type destroy_script_event but couldn't cast";
                     break;
                 }
 
-                if(!es.valid(entityx::Entity::Id(destroy_event->id))) {
+                if(unlikely(!es.valid(destroy_event->id))) {
                     LOG(ERROR) << NAMEOF(script_system::update) << " tried destroying non-existing script entity";
                     break;
                 }
 
+                if(unlikely(!es.valid(destroy_event->attached_entity_id) || !es.has<script_container_component>(destroy_event->attached_entity_id))) {
+                    LOG(ERROR) << NAMEOF(script_system::update) << " tried destroying script entity but wrong attached entity_id";
+                    break;
+                }
+
                 LOG(TRACE) << NAMEOF(script_system::update) << " destroying script " << destroy_event->id;
-                es.destroy(entityx::Entity::Id(destroy_event->id));
+                auto& container = es.get<script_container_component>(destroy_event->attached_entity_id);
+                container.remove_by_id(destroy_event->id);
+                es.destroy(destroy_event->id);
             }
                 break;
             case create_script_event::type: {
                 create_script_events++;
                 create_script_event *create_event = dynamic_cast<create_script_event *>(event.get());
 
-                if (create_event == nullptr) {
+                if (unlikely(create_event == nullptr)) {
                     LOG(WARNING) << NAMEOF(script_system::update) << " expected event type create_script_event but couldn't cast";
                     break;
                 }
 
-                if(!es.valid(entityx::Entity::Id(create_event->entity_id))) {
+                if(unlikely(!es.valid(create_event->entity_id))) {
                     LOG(ERROR) << NAMEOF(script_system::update) << " tried attaching to non-existing entity";
                     break;
                 }
 
-                auto entity = es.get(entityx::Entity::Id(create_event->entity_id));
-
                 auto script_entity = es.create();
-                auto script_container_handle = entity.component<script_container_component>();
+                auto& script_container_handle = es.get<script_container_component>(create_event->entity_id);
                 bool global = create_event->entity_id == 0;
 
                 LOG(TRACE) << NAMEOF(script_system::update) << " creating script " << create_event->name
-                           << ":" << script_entity.id().id() << " attaching to " << create_event->entity_id;
+                           << ":" << script_entity << " attaching to " << create_event->entity_id;
 
-                script_container_handle->scripts.emplace(script_entity.id().id(), script_component{
-                        script_entity.id().id(), load_script_with_libraries(create_event->name, create_event->script),
+                script_container_handle.scripts.emplace(script_entity, script_component{
+                        script_entity, load_script_with_libraries(create_event->name, create_event->script),
                         create_event->execute_in_ms, create_event->loop_every_ms, create_event->trigger_type, global, create_event->debug});
             }
                 break;

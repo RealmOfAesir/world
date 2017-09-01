@@ -18,20 +18,20 @@
 
 #pragma once
 
-#include <config.h>
-#include <queue>
-#include "ecs_system.h"
+#include <registry.hpp>
+#include "components/ai_component.h"
+#include "components/character_component.h"
+#include "components/effect_component.h"
+#include "components/map_component.h"
+#include "components/player_component.h"
+#include "components/position_component.h"
+#include "components/script_component.h"
+#include "components/stat_component.h"
+#include "components/tile_component.h"
 
 namespace roa {
-    class script_system : public ecs_system {
-    public:
-        script_system(Config& config)
-                : _config(config) {}
-        virtual ~script_system() override {};
+    using EntityManager = entt::StandardRegistry<uint64_t, ai_component, character_component, effect_component, map_component, player_component, position_component,
+            script_component, script_container_component, stat_component, tile_component>;
 
-        void update(EntityManager &es, TimeDelta dt) override;
-    private:
-        Config& _config;
-
-    };
+    using TimeDelta = uint32_t;
 }

@@ -51,8 +51,8 @@ extern "C" void set_tile_properties(uint64_t id, uint32_t tile_id) {
     _script_event_queue.emplace(make_shared<update_tile_event>(id, tile_id));
 }
 
-extern "C" void destroy_script(uint64_t id) {
-    _script_event_queue.emplace(make_shared<destroy_script_event>(id));
+extern "C" void destroy_script(uint64_t id, uint64_t attached_entity_id) {
+    _script_event_queue.emplace(make_shared<destroy_script_event>(id, attached_entity_id));
 }
 
 extern "C" void create_script(const char * name, uint64_t id, uint32_t execute_in_ms,
