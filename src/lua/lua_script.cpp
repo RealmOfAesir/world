@@ -26,7 +26,7 @@ using namespace roa;
 
 lua_script::lua_script(lua_script const &l) noexcept
         : _L(nullptr), _initialised(false), _no_of_runs(0),
-          _library_script_text(l._library_script_text), _script_text(l._script_text),
+          _library_script_text(l._library_script_text), _name(l._name), _script_text(l._script_text),
           _library_chunk_ref(-1), _script_chunk_ref(-1) {
 }
 
@@ -41,9 +41,9 @@ lua_script::lua_script(lua_script &&l) noexcept
     l._library_chunk_ref = -1;
 }
 
-lua_script::lua_script(std::string library_script, std::string script) :
-        _L(nullptr), _initialised(false), _no_of_runs(0), _library_script_text(library_script), _script_text(script),
-        _library_chunk_ref(-1), _script_chunk_ref(-1) {
+lua_script::lua_script(std::string library_script, std::string name, std::string script) :
+        _L(nullptr), _initialised(false), _no_of_runs(0), _library_script_text(library_script), _name(name),
+        _script_text(script), _library_chunk_ref(-1), _script_chunk_ref(-1) {
 }
 
 lua_script::~lua_script() {
@@ -56,6 +56,7 @@ bool lua_script::load() noexcept {
     int status;
 
     if (!_initialised) {
+        LOG(TRACE) << NAMEOF(lua_script::lua_script) << " loading library script";
         _L = luaL_newstate();
 
         luaL_openlibs(_L);
@@ -70,6 +71,7 @@ bool lua_script::load() noexcept {
         lua_pushvalue(_L, -1);
         _library_chunk_ref = luaL_ref(_L, LUA_REGISTRYINDEX);
     } else {
+        LOG(TRACE) << NAMEOF(lua_script::lua_script) << " loading cached library script";
         lua_settop(_L, 0);
         lua_rawgeti(_L, LUA_REGISTRYINDEX, _library_chunk_ref);
     }
@@ -82,6 +84,7 @@ bool lua_script::load() noexcept {
     }
 
     if (!_initialised) {
+        LOG(TRACE) << NAMEOF(lua_script::lua_script) << " loading script";
         status = luaL_loadstring(_L, _script_text.c_str());
         if (status != 0) {
             LOG(ERROR) << NAMEOF(lua_script::lua_script) << " Couldn't load script: " << lua_tostring(_L, -1);
@@ -92,6 +95,7 @@ bool lua_script::load() noexcept {
         lua_pushvalue(_L, -1);
         _script_chunk_ref = luaL_ref(_L, LUA_REGISTRYINDEX);
     } else {
+        LOG(TRACE) << NAMEOF(lua_script::lua_script) << " loading cached script";
         lua_rawgeti(_L, LUA_REGISTRYINDEX, _script_chunk_ref);
     }
 
@@ -125,22 +129,41 @@ void lua_script::close() noexcept {
     }
 }
 
-void lua_script::create_table() noexcept {
+void lua_script::create_table() const noexcept {
     lua_newtable(_L);
 }
 
-void lua_script::set_global(std::string const &name) noexcept {
+void lua_script::create_nested_table(string const &name) const noexcept {
+    lua_pushstring(_L, name.c_str());
+    lua_newtable(_L);
+}
+
+void lua_script::set_global(string const &name) const noexcept {
     lua_setglobal(_L, name.c_str());
 }
 
-void lua_script::push_integer(std::string const &name, int64_t val) noexcept {
+void lua_script::push_integer(string const &name, int64_t val) const noexcept {
     lua_pushstring(_L, name.c_str());
     lua_pushinteger(_L, val);
     lua_rawset(_L, -3);
 }
 
-void lua_script::push_boolean(std::string const &name, bool val) noexcept {
+void lua_script::push_boolean(string const &name, bool val) const noexcept {
     lua_pushstring(_L, name.c_str());
     lua_pushboolean(_L, val);
     lua_rawset(_L, -3);
+}
+
+void lua_script::push_string(string const &name, string const &val) const noexcept {
+    lua_pushstring(_L, name.c_str());
+    lua_pushstring(_L, val.c_str());
+    lua_rawset(_L, -3);
+}
+
+void lua_script::push_table() const noexcept {
+    lua_rawset(_L, -3);
+}
+
+std::string lua_script::name() const noexcept {
+    return _name;
 }

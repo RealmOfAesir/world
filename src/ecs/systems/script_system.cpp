@@ -20,11 +20,12 @@
 #include "../components/script_component.h"
 #include "../components/tile_component.h"
 #include "../components/character_component.h"
+#include "../components/player_component.h"
+#include "../components/map_component.h"
+#include "../components/stat_component.h"
 #include <easylogging++.h>
 #include <macros.h>
 #include <lua/lua_interop.h>
-#include <ecs/components/position_component.h>
-#include <ecs/components/map_component.h>
 #include <custom_optional.h>
 #include <lua/lua_script.h>
 
@@ -36,7 +37,8 @@ queue<shared_ptr<event_type>> _script_event_queue;
 
 enum entity_types {
     tile = 1,
-    character = 2
+    character = 2,
+    player = 3
 };
 
 STD_OPTIONAL<entityx::Entity> get_map_entity_from_id(entityx::EntityManager &es, uint32_t map_id) {
@@ -52,97 +54,212 @@ STD_OPTIONAL<entityx::Entity> get_map_entity_from_id(entityx::EntityManager &es,
 
 void script_system::update(entityx::EntityManager &es, entityx::EventManager &events, entityx::TimeDelta dt) {
     int updated_scripts = 0;
+    int checked_entities = 0;
+    int checked_scripts = 0;
     auto start = chrono::high_resolution_clock::now();
-    es.each<script_component>([&](entityx::Entity entity, script_component& script) {
-        if(script.execute_in_ms <= dt) {
-            auto tile_handle = entity.component<tile_component>();
-            auto character_handle = entity.component<character_component>();
+    es.each<script_container_component>([&](entityx::Entity entity, script_container_component& script_container) {
+        checked_entities++;
+        LOG(TRACE) << NAMEOF(script_system::update) << " entity " << entity.id().id() << " with " << script_container.scripts.size() << " scripts";
+        for(auto& script_tuple : script_container.scripts) {
+            auto& script = get<1>(script_tuple);
 
-            lua_script &lscript = script.script;
+            LOG(TRACE) << NAMEOF(script_system::update) << " script " << script.id;
+            checked_scripts++;
 
-            lscript.load();
-
-            lscript.create_table();
-
-            lscript.push_boolean("debug", script.debug);
-            lscript.push_boolean("library_debug", _config.debug_roa_library);
-
-            lscript.set_global("roa_settings");
-
-            lscript.create_table();
-
-            if(tile_handle) {
-                lscript.push_integer("tile_id", tile_handle->tile_id);
-                lscript.push_integer("id", entity.id().id());
-                lscript.push_integer("type", entity_types::tile);
-            } else {
-                lscript.push_integer("user_id", character_handle->user_id);
-                lscript.push_integer("id", entity.id().id());
-                lscript.push_integer("type", entity_types::character);
-            }
-
-            lscript.set_global("roa_entity");
-
-            if(!script.global) {
-                uint64_t map_id;
-
-                if(tile_handle) {
-                    map_id = tile_handle->map_id;
-                } else {
-                    map_id = character_handle->map_id;
-                }
-
-                auto map_entity = get_map_entity_from_id(es, map_id);
-
-                if(!map_entity) {
-                    LOG(ERROR) << "non-global script without map entity " << map_id;
-                    lscript.close();
-                    return;
-                }
-
-                auto map_handle = map_entity->component<map_component>();
-
-                lscript.create_table();
-
-                lscript.push_integer("id", map_entity->id().id());
-                lscript.push_integer("first_tile_id", map_handle->first_tile_id);
-                lscript.push_integer("max_tile_id", map_handle->max_tile_id);
-                lscript.push_integer("width", map_handle->width);
-                lscript.push_integer("height", map_handle->height);
-
-                lscript.set_global("roa_map");
-            }
-
-            if (!lscript.run()) {
+            if (!es.valid(entityx::Entity::Id(script.id))) {
+                script_container.remove_by_id(script.id);
                 return;
             }
 
-            updated_scripts++;
-            script.execute_in_ms = script.loop_every_ms - (dt - script.execute_in_ms);
-        } else {
-            script.execute_in_ms -= dt;
+            if (script.execute_in_ms <= dt) {
+                auto tile_handle = entity.component<tile_component>();
+                auto character_handle = entity.component<character_component>();
+                auto player_handle = entity.component<player_component>();
+                auto stats_handle = entity.component<stat_component>();
+
+                lua_script &lscript = script.script;
+
+                if (unlikely(!lscript.load())) {
+                    return;
+                }
+
+                lscript.create_table();
+
+                lscript.push_boolean("debug", script.debug);
+                lscript.push_boolean("library_debug", _config.debug_roa_library);
+
+                lscript.set_global("roa_settings");
+
+                lscript.create_table();
+
+                if (tile_handle) {
+                    LOG(TRACE) << NAMEOF(script_system::update) << " tile handle " << tile_handle->tile_id;
+                    lscript.push_integer("tile_id", tile_handle->tile_id);
+                    lscript.push_integer("id", entity.id().id());
+                    lscript.push_integer("type", entity_types::tile);
+                } else {
+                    LOG(TRACE) << NAMEOF(script_system::update) << " player handle " << player_handle->user_id;
+                    if (player_handle) {
+                        lscript.push_integer("user_id", player_handle->user_id);
+                        lscript.push_integer("type", entity_types::player);
+                    } else {
+                        lscript.push_integer("type", entity_types::character);
+                    }
+                    lscript.push_integer("id", entity.id().id());
+
+                    lscript.create_nested_table("stats");
+
+                    for (auto &stat : stats_handle->stats) {
+                        if (!stat.is_growth) {
+                            lscript.push_integer(stat.name, stat.static_value);
+                        }
+                    }
+
+                    lscript.push_table();
+                }
+
+                lscript.set_global("roa_entity");
+
+                if (!script.global) {
+                    uint64_t map_id;
+
+                    if (tile_handle) {
+                        map_id = tile_handle->map_id;
+                    } else {
+                        map_id = character_handle->map_id;
+                    }
+
+                    LOG(TRACE) << NAMEOF(script_system::update) << " map handle " << map_id;
+
+                    auto map_entity = get_map_entity_from_id(es, map_id);
+
+                    if (!map_entity) {
+                        LOG(ERROR) << "non-global script without map entity " << map_id;
+                        lscript.close();
+                        return;
+                    }
+
+                    auto map_handle = map_entity->component<map_component>();
+
+                    lscript.create_table();
+
+                    lscript.push_integer("id", map_entity->id().id());
+                    lscript.push_integer("first_tile_id", map_handle->first_tile_id);
+                    lscript.push_integer("max_tile_id", map_handle->max_tile_id);
+                    lscript.push_integer("width", map_handle->width);
+                    lscript.push_integer("height", map_handle->height);
+
+                    lscript.set_global("roa_map");
+                }
+
+                lscript.create_table();
+
+                lscript.push_integer("id", script.id);
+                lscript.push_string("name", script.script.name());
+
+                lscript.set_global("roa_script");
+
+                if (!lscript.run()) {
+                    return;
+                }
+
+                updated_scripts++;
+                script.execute_in_ms = script.loop_every_ms - (dt - script.execute_in_ms);
+            } else {
+                script.execute_in_ms -= dt;
+            }
         }
     });
     auto end = chrono::high_resolution_clock::now();
-    LOG(INFO) << NAMEOF(script_system::update) << " ran " << updated_scripts << " scripts in " << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
+    LOG(INFO) << NAMEOF(script_system::update) << " checked " << checked_entities << " entities, " << checked_scripts << " scripts and ran " << updated_scripts << " scripts in "
+              << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
 
     start = chrono::high_resolution_clock::now();
+    int total_events = 0;
+    int update_tile_events = 0;
+    int destroy_script_events = 0;
+    int create_script_events = 0;
     while(!_script_event_queue.empty()) {
-        auto event = _script_event_queue.front();
+        auto& event = _script_event_queue.front();
+        total_events++;
 
-        if(event->type == update_tile_event::type) {
-            update_tile_event* update_event = dynamic_cast<update_tile_event*>(event.get());
-            if(update_event != nullptr) {
+        switch(event->type) {
+            case update_tile_event::type: {
+                update_tile_events++;
+                update_tile_event *update_event = dynamic_cast<update_tile_event *>(event.get());
+
+                if (update_event == nullptr) {
+                    LOG(WARNING) << NAMEOF(script_system::update) << " expected event type update_tile_event but couldn't cast";
+                    break;
+                }
+
+                if(!es.valid(entityx::Entity::Id(update_event->id))) {
+                    LOG(ERROR) << NAMEOF(script_system::update) << " tried updating non-existing entity";
+                    break;
+                }
+
                 entityx::Entity tile_entity = es.get(entityx::Entity::Id(update_event->id));
                 auto tile_handle = tile_entity.component<tile_component>();
-                LOG(TRACE) << NAMEOF(script_system::update) << " updating tile " << tile_entity.id().id() << " map_id " << tile_handle->map_id << " new tile_id " << update_event->tile_id;
+                LOG(TRACE) << NAMEOF(script_system::update) << " updating tile " << tile_entity.id().id()
+                           << " map_id " << tile_handle->map_id << " new tile_id " << update_event->tile_id;
                 tile_handle->tile_id = update_event->tile_id;
             }
+                break;
+            case destroy_script_event::type: {
+                destroy_script_events++;
+                destroy_script_event *destroy_event = dynamic_cast<destroy_script_event *>(event.get());
+
+                if (destroy_event == nullptr) {
+                    LOG(WARNING) << NAMEOF(script_system::update) << " expected event type destroy_script_event but couldn't cast";
+                    break;
+                }
+
+                if(!es.valid(entityx::Entity::Id(destroy_event->id))) {
+                    LOG(ERROR) << NAMEOF(script_system::update) << " tried destroying non-existing script entity";
+                    break;
+                }
+
+                LOG(TRACE) << NAMEOF(script_system::update) << " destroying script " << destroy_event->id;
+                es.destroy(entityx::Entity::Id(destroy_event->id));
+            }
+                break;
+            case create_script_event::type: {
+                create_script_events++;
+                create_script_event *create_event = dynamic_cast<create_script_event *>(event.get());
+
+                if (create_event == nullptr) {
+                    LOG(WARNING) << NAMEOF(script_system::update) << " expected event type create_script_event but couldn't cast";
+                    break;
+                }
+
+                if(!es.valid(entityx::Entity::Id(create_event->entity_id))) {
+                    LOG(ERROR) << NAMEOF(script_system::update) << " tried attaching to non-existing entity";
+                    break;
+                }
+
+                auto entity = es.get(entityx::Entity::Id(create_event->entity_id));
+
+                auto script_entity = es.create();
+                auto script_container_handle = entity.component<script_container_component>();
+                bool global = create_event->entity_id == 0;
+
+                LOG(TRACE) << NAMEOF(script_system::update) << " creating script " << create_event->name
+                           << ":" << script_entity.id().id() << " attaching to " << create_event->entity_id;
+
+                script_container_handle->scripts.emplace(script_entity.id().id(), script_component{
+                        script_entity.id().id(), load_script_with_libraries(create_event->name, create_event->script),
+                        create_event->execute_in_ms, create_event->loop_every_ms, create_event->trigger_type, global, create_event->debug});
+            }
+                break;
+            default:
+                break;
         }
 
         _script_event_queue.pop();
     }
 
     end = chrono::high_resolution_clock::now();
-    LOG(INFO) << NAMEOF(script_system::update) << " pumped script event queue in " << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
+    LOG(INFO) << NAMEOF(script_system::update) << " pumped " << total_events << " events, " << update_tile_events << " update events, "
+              << destroy_script_events << " destroy events and " << create_script_events << " create events in "
+              << chrono::duration_cast<chrono::milliseconds>((end-start)).count() << " ms";
 }

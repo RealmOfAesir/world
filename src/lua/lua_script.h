@@ -25,7 +25,7 @@ struct lua_State;
 namespace roa {
     class lua_script {
     public:
-        lua_script(std::string library_script, std::string script);
+        lua_script(std::string library_script, std::string name, std::string script);
         lua_script(lua_script const &l) noexcept;
         lua_script(lua_script&& l) noexcept;
         ~lua_script() noexcept;
@@ -34,16 +34,22 @@ namespace roa {
         bool run() noexcept;
         void close() noexcept;
 
-        void create_table() noexcept;
-        void set_global(std::string const &name) noexcept;
+        void create_table() const noexcept;
+        void create_nested_table(std::string const &name) const noexcept;
+        void set_global(std::string const &name) const noexcept;
 
-        void push_integer(std::string const &name, int64_t val) noexcept;
-        void push_boolean(std::string const &name, bool val) noexcept;
+        void push_integer(std::string const &name, int64_t val) const noexcept;
+        void push_boolean(std::string const &name, bool val) const noexcept;
+        void push_string(std::string const &name, std::string const &val) const noexcept;
+        void push_table() const noexcept;
+
+        std::string name() const noexcept;
     private:
         lua_State *_L;
         bool _initialised;
         uint32_t _no_of_runs;
         std::string _library_script_text;
+        std::string _name;
         std::string _script_text;
         int _library_chunk_ref;
         int _script_chunk_ref;

@@ -19,18 +19,20 @@
 #pragma once
 
 namespace roa {
-    struct stat_component {
-        stat_component(uint64_t user_id) : user_id(user_id) {}
+    struct stat {
+        stat(std::string name, uint64_t static_value, uint32_t dice, uint32_t die_face, bool is_growth)
+                : name(name), static_value(static_value), dice(dice), die_face(die_face), is_growth(is_growth) {}
 
         std::string name;
         uint64_t static_value;
         uint32_t dice;
         uint32_t die_face;
-        player_id BIGINT NOT NULL,
-                stat_id INT NOT NULL,
-        is_growth BOOLEAN NOT NULL,
-                static_value BIGINT NOT NULL,
-        dice INT NULL,
-        die_face INT NULL
+        bool is_growth;
+    };
+
+    struct stat_component {
+        stat_component(std::vector<stat> stats) : stats(stats) {}
+
+        std::vector<stat> stats;
     };
 }

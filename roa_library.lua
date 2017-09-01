@@ -21,117 +21,136 @@ local ffi = require("ffi")
 ffi.cdef[[
 void roa_log(int level, char const * message);
 void set_tile_properties(uint64_t id, uint32_t tile_id);
+void destroy_script(uint64_t id);
+void create_script(char const * name, uint64_t id, uint32_t execute_in_ms, uint32_t loop_every_ms, uint32_t trigger_type, bool debug);
 ]]
-
-local enummt = {
-    __index = function(table, key)
-        if rawget(table.enums, key) then
-            return key
-        end
-    end
-}
-
-local function Enum(t)
-    local e = { enums = t }
-    return setmetatable(e, enummt)
-end
-
-local SettingsClass = {}
-SettingsClass.__index = SettingsClass
-
-function SettingsClass:Create(debug, library_debug)
-    local s = {}
-    setmetatable(s, SettingsClass)
-    s.debug = debug
-    s.library_debug = library_debug
-    return s
-end
-
-local MapClass = {}
-MapClass.__index = MapClass
-
-function MapClass:Create(id, first_tile_id, max_tile_id, width, height)
-    local m = {}
-    setmetatable(m, MapClass)
-    m.id = id
-    m.first_tile_id = first_tile_id
-    m.max_tile_id = max_tile_id
-    m.width = width
-    m.height = height
-    return m
-end
-
-function MapClass:get_id()
-    return self.id
-end
-
-function MapClass:get_first_tile_id()
-    return self.first_tile_id
-end
-
-function MapClass:get_max_tile_id()
-    return self.max_tile_id
-end
-
-function MapClass:get_width()
-    return self.width
-end
-
-function MapClass:get_height()
-    return self.height
-end
-
-local TileClass = {}
-TileClass.__index = TileClass
-
-function TileClass:Create(id, tile_id, map)
-    if map == nil then
-        error("tile requires a map")
-    end
-
-    local t = {}
-    setmetatable(t, TileClass)
-    t.id = id
-    t.tile_id = tile_id
-    t.map = map
-    return t
-end
-
-function TileClass:set_tile_id(id)
-    if roa_settings["library_debug"] then
-        ffi.C.roa_log(0, "setting tile id " .. self.id .. " to tile_id " .. id)
-    end
-
-    ffi.C.set_tile_properties(self.id, id)
-    self.tile_id = id
-end
-
-function TileClass:get_tile_id()
-    return self.tile_id
-end
-
-function TileClass:get_id()
-    return self.id
-end
-
-function TileClass:get_map()
-    return self.map
-end
 
 local roa = {}
 
--- cannot be enum, is given directly from C++ to lua through stack
 roa.entity_types = {
     Tile = 1,
     Character = 2
 }
 
-roa.debug_level = Enum {
+roa.debug_level = {
     Debug = 0,
     Info = 1,
     Warning = 2,
     Error = 3
 }
+
+roa.class_type = {
+    Settings = 0,
+    Map = 1,
+    Tile = 2,
+    Script = 3
+}
+
+roa.script_trigger_type = {
+    Once = 0,
+    Looped = 1,
+    Chat = 2,
+    Movement = 3
+}
+
+function SettingsClass(debug, library_debug)
+    local s = {}
+    s.class_type = roa.class_type.Settings
+    s.debug = debug
+    s.library_debug = library_debug
+    return s
+end
+
+function MapClass(id, first_tile_id, max_tile_id, width, height)
+    local s = {}
+    s.class_type = roa.class_type.Map
+
+    local id = id
+    local first_tile_id = first_tile_id
+    local max_tile_id = max_tile_id
+    local width = width
+    local height = height
+
+    function s.get_id()
+        return id
+    end
+
+    function s.get_first_tile_id()
+        return first_tile_id
+    end
+
+    function s.get_max_tile_id()
+        return max_tile_id
+    end
+
+    function s.get_width()
+        return width
+    end
+
+    function s.get_height()
+        return height
+    end
+
+    return s
+end
+
+function TileClass(id, tile_id, map)
+    if map == nil then
+        error("tile requires a map")
+    end
+
+    local s = {}
+    s.class_type = roa.class_type.Tile
+    local id = id
+    local tile_id = tile_id
+    local map = map
+
+    function s.set_tile_id(new_id)
+        if roa_settings["library_debug"] then
+            ffi.C.roa_log(0, "setting tile " .. id .. " to tile_id " .. new_id)
+        end
+
+        ffi.C.set_tile_properties(id, new_id)
+        tile_id = new_id
+    end
+
+    function s.get_tile_id()
+        return tile_id
+    end
+
+    function s.get_id()
+        return id
+    end
+
+    function s.get_map()
+        return map
+    end
+
+    return s
+end
+
+function ScriptClass(id, name)
+    local s = {}
+    s.class_type = roa.class_type.Script
+
+    local id = id
+    local name = name
+
+    function s.get_id()
+        return id
+    end
+
+    function s.get_name()
+        return name
+    end
+
+    function s.destroy()
+        ffi.C.destroy_script(id)
+        id = -1
+    end
+
+    return s
+end
 
 function roa.log(level, message)
     if level == roa.debug_level.Debug then
@@ -155,13 +174,17 @@ function roa.get_triggering_entity()
     end
 
     if(roa_entity["type"] == roa.entity_types.Tile) then
-        local map = MapClass:Create(roa_map["id"], roa_map["first_tile_id"], roa_map["max_tile_id"], roa_map["width"], roa_map["height"])
-        return TileClass:Create(roa_entity["id"], roa_entity["tile_id"], map)
+        local map = MapClass(roa_map["id"], roa_map["first_tile_id"], roa_map["max_tile_id"], roa_map["width"], roa_map["height"])
+        return TileClass(roa_entity["id"], roa_entity["tile_id"], map)
     elseif roa_settings["library_debug"] then
         roa.log(roa.debug_level.Debug, "type unknown")
     end
 
     return nil
+end
+
+function roa.get_self_script()
+    return ScriptClass(roa_script["id"], roa_script["name"])
 end
 
 function roa.get_settings()
@@ -170,7 +193,7 @@ function roa.get_settings()
         error("no settings available")
     end
 
-    return SettingsClass:Create(roa_settings["debug"], roa_settings["library_debug"])
+    return SettingsClass(roa_settings["debug"], roa_settings["library_debug"])
 end
 
 function roa.display_stack_parameters()
@@ -188,6 +211,10 @@ function roa.display_stack_parameters()
     for k, v in pairs( roa_map ) do
         roa.log(roa.debug_level.Debug, string.format("%s-%s", k, v))
     end
+end
+
+function roa.create_script(name, entity_id, execute_in_ms, loop_every_ms, trigger_type, debug)
+    ffi.C.create_script(name, entity_id, execute_in_ms, loop_every_ms, trigger_type, debug)
 end
 
 package.loaded["roa"] = roa

@@ -17,8 +17,13 @@
 */
 
 #include <queue>
+#include <macros.h>
 #include "lua_interop.h"
 #include "easylogging++.h"
+#include "../../test/test_helpers/startup_helper.h"
+#include <cstdio>
+#include <repositories/scripts_repository.h>
+#include <boost/di.hpp>
 
 using namespace std;
 using namespace roa;
@@ -43,6 +48,30 @@ extern "C" void roa_log(int level, char const *message) {
 }
 
 extern "C" void set_tile_properties(uint64_t id, uint32_t tile_id) {
-    _script_event_queue.emplace<shared_ptr<update_tile_event>>(make_shared<update_tile_event>(id, tile_id));
+    _script_event_queue.emplace(make_shared<update_tile_event>(id, tile_id));
 }
 
+extern "C" void destroy_script(uint64_t id) {
+    _script_event_queue.emplace(make_shared<destroy_script_event>(id));
+}
+
+extern "C" void create_script(const char * name, uint64_t id, uint32_t execute_in_ms,
+                              uint32_t loop_every_ms, uint32_t trigger_type, bool debug) {
+    trigger_type_enum type;
+    if(trigger_type == 0) {
+        type = trigger_type_enum::once;
+    } else if(trigger_type == 1) {
+        type = trigger_type_enum::looped;
+    } else if(trigger_type == 2) {
+        type = trigger_type_enum::chat;
+    } else if(trigger_type == 3) {
+        type = trigger_type_enum::movement;
+    } else {
+        LOG(ERROR) << NAMEOF(roa_base_functions::create_script) << " trigger_type undefined";
+        return;
+    }
+
+    auto script = load_script(name);
+
+    _script_event_queue.emplace(make_shared<create_script_event>(name, script->text, id, execute_in_ms, loop_every_ms, type, debug));
+}

@@ -33,9 +33,9 @@ using namespace roa;
 using namespace entityx;
 
 void world::do_tick(uint32_t tick_length) {
-    LOG(DEBUG) << NAMEOF(world::do_tick) << " starting tick";
+    LOG(TRACE) << NAMEOF(world::do_tick) << " starting tick";
     _ex.systems.update_all(tick_length);
-    LOG(DEBUG) << NAMEOF(world::do_tick) << " finished tick";
+    LOG(TRACE) << NAMEOF(world::do_tick) << " finished tick";
 }
 
 void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& config) {
@@ -53,7 +53,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     _ex.systems.configure();
 
     Entity map_entity = _ex.entities.create();
-    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 1000);
+    map_entity.assign<map_component>(0, 64, 64, 640, 640, 1, 1, 3);
     ComponentHandle<map_component> mc = map_entity.component<map_component>();
 
     mc->tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
@@ -61,8 +61,8 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     mc->tiles.resize(1);
     mc->tiles[0].resize(100);
 
-    for(uint32_t x = 0; x < 25; x++) {
-        for(uint32_t y = 0; y < 25; y++) {
+    for(uint32_t x = 0; x < 100; x++) {
+        for(uint32_t y = 0; y < 100; y++) {
             Entity tile_entity = _ex.entities.create();
             tile_entity.assign<tile_component>(map_entity.id().id(), y+1);
             mc->tiles[0][x].push_back(tile_entity);
@@ -76,13 +76,31 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     }
 
     {
-        scripts_repository scripts_repo = repo_injector.create<scripts_repository>();
-        auto transaction = scripts_repo.create_transaction();
-        auto script = scripts_repo.get_script("test_tile_script", get<1>(transaction));
+        shared_ptr<scripts_repository> scripts_repo = repo_injector.create<shared_ptr<scripts_repository>>();
 
-        for(uint32_t x = 0; x < 25; x++) {
-            for(uint32_t y = 0; y < 25; y++) {
-                mc->tiles[0][x][y].assign<script_component>(script->name, load_script_with_libraries(script->text), 500, 500, trigger_type_enum::looped, false);
+        set_scripts_repository(scripts_repo);
+
+        auto lib = load_script("roa_library"s);
+        auto scr = load_script("tile_id_upwards"s);
+
+        set_library_script(lib->text);
+
+        for(uint32_t x = 0; x < 100; x++) {
+            for(uint32_t y = 0; y < 10; y++) {
+                Entity script_entity = _ex.entities.create();
+                mc->tiles[0][x][y].assign<script_container_component>(unordered_map<uint64_t, script_component>{
+                    {
+                        script_entity.id().id(),
+                        {
+                            script_entity.id().id(),
+                            load_script_with_libraries(scr->name, scr->text),
+                            200, 200,
+                            trigger_type_enum::looped,
+                            false,
+                            false
+                        }
+                    }
+                });
             }
         }
     }

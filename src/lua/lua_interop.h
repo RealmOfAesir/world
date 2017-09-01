@@ -20,11 +20,20 @@
 
 #include <lua.hpp>
 #include <iostream>
+#include <ecs/components/script_component.h>
 #include "lua_script.h"
+#include <memory>
+
+#define USE_LOCAL_FILES 1
 
 namespace roa {
-    lua_script load_script_with_libraries(std::string script);
+    class iscripts_repository;
+    class script;
+
+    lua_script load_script_with_libraries(std::string name, std::string script);
     void set_library_script(std::string script);
+    void set_scripts_repository(std::shared_ptr<iscripts_repository> scripts_repo);
+    std::shared_ptr<script> load_script(std::string name);
 
     class event_type {
     public:
@@ -42,5 +51,32 @@ namespace roa {
         static constexpr uint32_t type = 1;
         uint64_t id;
         uint32_t tile_id;
+    };
+
+    class destroy_script_event : public event_type {
+    public:
+        destroy_script_event() = default;
+        destroy_script_event(uint64_t id) : event_type(destroy_script_event::type), id(id) {}
+        virtual ~destroy_script_event() {}
+
+        static constexpr uint32_t type = 2;
+        uint64_t id;
+    };
+
+    class create_script_event : public event_type {
+    public:
+        create_script_event() = default;
+        create_script_event(std::string name, std::string script, uint64_t entity_id, uint32_t execute_in_ms, uint32_t loop_every_ms, trigger_type_enum trigger_type, bool debug)
+                : event_type(create_script_event::type), name(name), script(script), entity_id(entity_id), execute_in_ms(execute_in_ms), loop_every_ms(loop_every_ms), trigger_type(trigger_type), debug(debug) {}
+        virtual ~create_script_event() {}
+
+        static constexpr uint32_t type = 3;
+        std::string name;
+        std::string script;
+        uint64_t entity_id;
+        uint32_t execute_in_ms;
+        uint32_t loop_every_ms;
+        trigger_type_enum trigger_type;
+        bool debug;
     };
 }

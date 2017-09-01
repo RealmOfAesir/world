@@ -74,6 +74,7 @@ void init_extras() noexcept {
 void init_logger(Config const config) noexcept {
     el::Configurations defaultConf;
     defaultConf.setGlobally(el::ConfigurationType::Format, "%datetime %level: %msg");
+    defaultConf.setGlobally(el::ConfigurationType::Filename, "logs/world-%datetime{%Y%M%d}.log");
     if(!config.debug_level.empty()) {
         if(config.debug_level == "error") {
             defaultConf.set(el::Level::Warning, el::ConfigurationType::Enabled, "false");
@@ -268,26 +269,6 @@ int main() {
     auto db_pool = make_shared<database_pool>();
     db_pool->create_connections(config.connection_string, 2);
     auto common_injector = create_common_di_injector();
-
-    {
-        auto repo_injector = boost::di::make_injector(
-                boost::di::bind<idatabase_transaction>.to<database_transaction>(),
-                boost::di::bind<idatabase_connection>.to<database_connection>(),
-                boost::di::bind<idatabase_pool>.to(db_pool),
-                boost::di::bind<iscripts_repository>.to<scripts_repository>()
-        );
-
-        scripts_repository scripts_repo = repo_injector.create<scripts_repository>();
-        auto transaction = scripts_repo.create_transaction();
-        auto script = scripts_repo.get_script("roa_library", get<1>(transaction));
-
-        if(!script) {
-            LOG(ERROR) << "database not seeded properly, please insert roa_library";
-            return 1;
-        }
-
-        set_library_script(script->text);
-    }
 
     auto producer = common_injector.create<shared_ptr<ikafka_producer<false>>>();
     auto consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();

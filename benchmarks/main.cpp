@@ -85,12 +85,12 @@ void benchmark_loading_and_running_lua() {
     }
 
     set_library_script(lib);
-    lua_script L = load_script_with_libraries(src_file);
+    lua_script L = load_script_with_libraries("test", src_file);
 
     print_process_mem_usage("start mem: ");
 
     auto start = chrono::high_resolution_clock::now();
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 100'000; i++) {
         L.load();
 
         L.create_table();
@@ -106,6 +106,13 @@ void benchmark_loading_and_running_lua() {
         L.push_integer("id", 1);
         L.push_integer("type", 1);
 
+        L.create_nested_table("stats");
+
+        L.push_integer("test", 15);
+        L.push_integer("test2", 16);
+
+        L.push_table();
+
         L.set_global("roa_entity");
 
         L.create_table();
@@ -117,6 +124,13 @@ void benchmark_loading_and_running_lua() {
         L.push_integer("height", 2);
 
         L.set_global("roa_map");
+
+        L.create_table();
+
+        L.push_integer("id", 20);
+        L.push_string("name", "script");
+
+        L.set_global("roa_script");
         L.run();
     }
     auto end = chrono::high_resolution_clock::now();
@@ -132,8 +146,8 @@ void init_stuff() {
 
     el::Configurations defaultConf;
     defaultConf.setGlobally(el::ConfigurationType::Format, "%datetime %level: %msg");
-    //defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
-    //defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+    defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
     el::Loggers::reconfigureAllLoggers(defaultConf);
 }
 
