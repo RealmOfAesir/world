@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -22,6 +22,17 @@
 #include <ecs/ecs.h>
 
 namespace roa {
+    struct layer {
+        layer(std::vector<uint64_t> tiles, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+                : tiles(tiles), x(x), y(y), width(width), height(height) {}
+
+        std::vector<uint64_t> tiles;
+        uint32_t x;
+        uint32_t y;
+        uint32_t width;
+        uint32_t height;
+    };
+
     struct tileset {
         tileset(uint32_t first_gid, std::string image_path, uint32_t tile_width, uint32_t tile_height,
                 uint32_t width, uint32_t height) : first_gid(first_gid), image_path(image_path), tile_width(tile_width),
@@ -37,9 +48,9 @@ namespace roa {
 
     struct map_component {
         map_component(uint32_t id, uint32_t tile_height, uint32_t tile_width,
-                      uint32_t width, uint32_t height, uint32_t layers, uint32_t first_tile_id, uint32_t max_tile_id)
+                      uint32_t width, uint32_t height, uint32_t no_layers, uint32_t first_tile_id, uint32_t max_tile_id)
                 : id(id), tile_height(tile_height), tile_width(tile_width),
-                  width(width), height(height), layers(layers), first_tile_id(first_tile_id), max_tile_id(max_tile_id)
+                  width(width), height(height), no_layers(no_layers), first_tile_id(first_tile_id), max_tile_id(max_tile_id)
         {}
 
         uint32_t id;
@@ -47,11 +58,11 @@ namespace roa {
         uint32_t tile_width;
         uint32_t width;
         uint32_t height;
-        uint32_t layers;
+        uint32_t no_layers;
         uint32_t first_tile_id;
         uint32_t max_tile_id;
         std::vector<tileset> tilesets;
-        std::vector<std::vector<std::vector<uint64_t>>> tiles;
+        std::vector<layer> layers;
         std::vector<uint64_t> npcs;
         std::vector<uint64_t> pcs;
         std::vector<uint64_t> items;

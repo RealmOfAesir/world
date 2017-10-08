@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -16,9 +16,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #pragma once
 
+namespace roa {
+    class event_type {
+    public:
+        explicit event_type(uint32_t type) : type(type) {}
+        virtual ~event_type() {};
+        uint32_t type;
+    };
+}
 
-class map {
-
-};

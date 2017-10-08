@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -21,17 +21,9 @@
 #include <string>
 #include <custom_optional.h>
 #include "repository.h"
+#include "models/map_tile_model.h"
 
 namespace roa {
-    struct map_tile {
-        uint64_t id;
-        uint32_t map_id;
-        uint32_t tile_id;
-        uint32_t x;
-        uint32_t y;
-        uint32_t z;
-    };
-
     class imap_tiles_repository : public irepository {
     public:
         virtual ~imap_tiles_repository() = default;

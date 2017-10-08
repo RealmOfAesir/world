@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +24,9 @@
 #include <cstdio>
 #include <repositories/scripts_repository.h>
 #include <boost/di.hpp>
+#include <events/lua_events/update_tile_event.h>
+#include <events/lua_events/create_script_event.h>
+#include <events/lua_events/destroy_script_event.h>
 
 using namespace std;
 using namespace roa;

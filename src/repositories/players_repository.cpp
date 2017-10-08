@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -86,8 +86,17 @@ void players_repository::insert_player_at_start_location(player &plyr,
         throw unexpected_result_error("expected script_zone_id to contain something"s);
     }
 
-    auto loc_result = transaction->execute("INSERT INTO locations AS l (map_id, x, y) SELECT z.map_id, z.x, z.y "
-                                           "FROM script_zones z WHERE z.id = " + transaction->escape(script_zone_id) + " RETURNING l.id");
+    auto loc_result = transaction->execute("WITH map_view AS ("
+                                               "SELECT z.map_id, z.x, z.y, m.map_name "
+                                               "FROM script_zones z "
+                                               "INNER JOIN maps m ON m.id = z.map_id "
+                                               "WHERE z.id = " + transaction->escape(script_zone_id) + "), "
+                                           "inserted_loc AS ("
+                                               "INSERT INTO locations AS l (map_id, x, y) "
+                                               "SELECT map_view.map_id, map_view.x, map_view.y "
+                                               "FROM map_view RETURNING l.id) "
+                                           "SELECT inserted_loc.id, map_view.x, map_view.y, map_view.map_id, map_view.map_name "
+                                           "FROM map_view, inserted_loc");
 
     if(unlikely(loc_result.size() != 1)) {
         throw unexpected_result_error("expected exactly one loc_result"s);
@@ -104,6 +113,8 @@ void players_repository::insert_player_at_start_location(player &plyr,
     }
 
     plyr.id = result[0][0].as<uint64_t>();
+    plyr.location_id = loc_result[0][0].as<uint32_t>();
+    plyr.location = make_optional<player_location>({loc_result[0][1].as<uint32_t>(), loc_result[0][2].as<uint32_t>(), loc_result[0][3].as<uint32_t>(), loc_result[0][4].as<string>()});
 
     LOG(DEBUG) << NAMEOF(players_repository::insert_player_at_start_location) << " inserted player with id " << plyr.id << " in location " << loc_id;
 }
@@ -119,7 +130,19 @@ void players_repository::update_player(player &plyr, unique_ptr<idatabase_transa
 
 STD_OPTIONAL<player> players_repository::get_player(string const &name, included_tables includes,
                                                     unique_ptr<idatabase_transaction> const &transaction) {
-    auto result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE player_name = '" + transaction->escape(name) + "'");
+    pqxx::result result;
+
+    if(includes == included_tables::none) {
+        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE player_name = '" + transaction->escape(name) + "'");
+    } else if (includes == included_tables::location) {
+        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name, l.x, l.y, m.id, m.map_name FROM players p "
+                                              "INNER JOIN locations l ON l.id = p.location_id "
+                                              "INNER JOIN maps m ON m.id = l.map_id "
+                                              "WHERE p.player_name = '" + transaction->escape(name) + "'");
+    } else {
+        LOG(ERROR) << NAMEOF(players_repository::get_player) << " included_tables value " << static_cast<int>(includes) << " not implemented";
+        throw unexpected_result_error("included_tables value not implemented");
+    }
 
     if(result.size() == 0) {
         LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found no player by name " << name;
@@ -128,6 +151,10 @@ STD_OPTIONAL<player> players_repository::get_player(string const &name, included
 
     auto ret = make_optional<player>({result[0][0].as<uint64_t>(), result[0][1].as<uint64_t>(),
                                       result[0][2].as<uint64_t>(), result[0][3].as<string>()});
+
+    if(includes == included_tables::location) {
+        ret->location.emplace(result[0][4].as<uint32_t>(), result[0][5].as<uint32_t>(), result[0][6].as<uint32_t>(), result[0][7].as<string>());
+    }
 
     LOG(DEBUG) << NAMEOF(players_repository::get_player) << " found player by name with id " << ret->id;
 
@@ -157,7 +184,7 @@ vector<player> players_repository::get_players_by_user_id(uint64_t user_id, incl
     if(includes == included_tables::none) {
         result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name FROM players p WHERE user_id = " + to_string(user_id));
     } else if (includes == included_tables::location) {
-        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name, l.x, l.y, m.map_name FROM players p "
+        result = transaction->execute("SELECT p.id, p.user_id, p.location_id, p.player_name, l.x, l.y, m.id, m.map_name FROM players p "
                                       "INNER JOIN locations l ON l.id = p.location_id "
                                       "INNER JOIN maps m ON m.id = l.map_id "
                                       "WHERE p.user_id = " + to_string(user_id));
@@ -174,7 +201,7 @@ vector<player> players_repository::get_players_by_user_id(uint64_t user_id, incl
     for(auto const & res : result) {
         player plyr{res[0].as<uint64_t>(), res[1].as<uint64_t>(), res[2].as<uint64_t>(), res[3].as<string>()};
         if(includes == included_tables::location) {
-            plyr.location.emplace(res[4].as<uint32_t>(), res[5].as<uint32_t>(), res[6].as<string>());
+            plyr.location.emplace(res[4].as<uint32_t>(), res[5].as<uint32_t>(), res[6].as<uint32_t>(), res[7].as<string>());
         }
         players.push_back(move(plyr));
     }

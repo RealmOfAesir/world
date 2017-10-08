@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -21,18 +21,9 @@
 #include <string>
 #include <custom_optional.h>
 #include "repository.h"
+#include "models/script_zone_model.h"
 
 namespace roa {
-    struct script_zone {
-        uint32_t id;
-        std::string zone_name;
-        uint32_t map_id;
-        uint32_t x;
-        uint32_t y;
-        uint32_t width;
-        uint32_t height;
-    };
-
     class iscript_zones_repository : public irepository {
     public:
         virtual ~iscript_zones_repository() = default;

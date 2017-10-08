@@ -17,7 +17,9 @@ include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/common
 include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/libpqxx/include")
 include_directories("${CMAKE_SOURCE_DIR}/external/common_backend/external/common/external/json/src")
 include_directories("${CMAKE_SOURCE_DIR}/external/entt/src")
+include_directories("${CMAKE_SOURCE_DIR}/external/readerwriterqueue")
 include_directories("${CMAKE_SOURCE_DIR}/external/LuaJIT/src")
+include_directories("${CMAKE_SOURCE_DIR}/external/lz4/lib")
 
 find_library(RDKAFKA_LIBRARY rdkafka HINTS ${CMAKE_SOURCE_DIR}/external/common_backend/external/librdkafka/src)
 find_library(RDKAFKAPP_LIBRARY rdkafka++ HINTS ${CMAKE_SOURCE_DIR}/external/common_backend/external/librdkafka/src-cpp)
@@ -25,6 +27,7 @@ find_library(PQXX_LIBRARY pqxx HINTS ${CMAKE_SOURCE_DIR}/external/common_backend
 find_library(ROA_COMMON_LIBRARY RealmOfAesirCommon HINTS ${CMAKE_SOURCE_DIR}/external/common_backend/external/common/bin)
 find_library(ROA_COMMON_BACKEND_LIBRARY RealmOfAesirCommonBackend HINTS ${CMAKE_SOURCE_DIR}/external/common_backend/bin)
 find_library(LUAJIT_LIBRARY luajit HINTS ${CMAKE_SOURCE_DIR}/external/LuaJIT/src)
+find_library(LZ_LIBRARY lz4 HINTS ${CMAKE_SOURCE_DIR}/external/lz4/lib)
 
 if(NOT RDKAFKA_LIBRARY)
     message(FATAL_ERROR "rdkafka not found")
@@ -50,12 +53,17 @@ if(NOT LUAJIT_LIBRARY)
     message(FATAL_ERROR "LUAJIT_LIBRARY not found")
 endif()
 
+if(NOT LZ_LIBRARY)
+    message(FATAL_ERROR "LZ_LIBRARY not found")
+endif()
+
 target_link_libraries(RealmOfAesirWorld PUBLIC ${ROA_COMMON_BACKEND_LIBRARY})
 target_link_libraries(RealmOfAesirWorld PUBLIC ${ROA_COMMON_LIBRARY})
 target_link_libraries(RealmOfAesirWorld PUBLIC ${RDKAFKAPP_LIBRARY})
 target_link_libraries(RealmOfAesirWorld PUBLIC ${RDKAFKA_LIBRARY})
 target_link_libraries(RealmOfAesirWorld PUBLIC ${PQXX_LIBRARY})
 target_link_libraries(RealmOfAesirWorld PUBLIC ${LUAJIT_LIBRARY})
+target_link_libraries(RealmOfAesirWorld PUBLIC ${LZ_LIBRARY})
 
 find_package(PostgreSQL REQUIRED)
 include_directories(${PostgreSQL_INCLUDE_DIRS})

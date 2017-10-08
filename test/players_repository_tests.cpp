@@ -102,15 +102,11 @@ TEST_CASE("players repository tests") {
 
         player plyr{0, 1, 0, "john doe"s};
         players_repo.insert_player_at_start_location(plyr, get<1>(transaction));
-
-        auto plyr2 = players_repo.get_player(plyr.id, included_tables::none, get<1>(transaction));
-        REQUIRE(plyr2);
-        REQUIRE(plyr2->location_id > 0);
-
-        auto loc = locations_repo.get_location(plyr2->location_id, get<1>(transaction));
-        REQUIRE(loc);
-        REQUIRE(plyr2->location_id == loc->id);
-        REQUIRE(plyr2->user_id == plyr.user_id);
-        REQUIRE(plyr2->name == plyr.name);
+        REQUIRE(plyr.location_id > 0);
+        REQUIRE(plyr.location);
+        REQUIRE(plyr.location->map_id == _map.id);
+        REQUIRE(plyr.location->map_name == _map.name);
+        REQUIRE(plyr.location->x == zone.x);
+        REQUIRE(plyr.location->y == zone.y);
     }
 }

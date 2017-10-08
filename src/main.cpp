@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -21,6 +21,7 @@
 #include <kafka_consumer.h>
 #include <kafka_producer.h>
 #include <admin_messages/admin_quit_message.h>
+#include <readerwriterqueue.h>
 
 #include <signal.h>
 #include <string>
@@ -44,8 +45,10 @@
 #include <world/world.h>
 #include "message_handlers/message_dispatcher.h"
 #include "message_handlers/world/world_create_character_handler.h"
+#include "message_handlers/world/world_play_character_handler.h"
 #include "database_transaction.h"
 #include "config.h"
+#include <events/event.h>
 
 using namespace std;
 using namespace roa;
@@ -177,13 +180,14 @@ STD_OPTIONAL<Config> parse_env_file() {
     return config;
 }
 
-unique_ptr<thread> create_consumer_thread(Config& config, shared_ptr<database_pool> db_pool, shared_ptr<ikafka_consumer<false>> consumer, shared_ptr<ikafka_producer<false>> producer) {
+unique_ptr<thread> create_consumer_thread(Config& config, moodycamel::ReaderWriterQueue<shared_ptr<player_event>>& player_event_queue, shared_ptr<database_pool> db_pool,
+                                          shared_ptr<ikafka_consumer<false>> consumer, shared_ptr<ikafka_producer<false>> producer) {
     if (!consumer || !producer) {
         LOG(ERROR) << NAMEOF(create_consumer_thread) << " one of the arguments are null";
         throw runtime_error("[main:consumer] one of the arguments are null");
     }
 
-    return make_unique<thread>([=, &config] {
+    return make_unique<thread>([=, &config, &player_event_queue] {
         LOG(INFO) << NAMEOF(create_consumer_thread) << " starting consumer thread";
 
         auto backend_injector = boost::di::make_injector(
@@ -201,7 +205,8 @@ unique_ptr<thread> create_consumer_thread(Config& config, shared_ptr<database_po
 
         message_dispatcher<false> world_server_msg_dispatcher;
 
-        world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
+        world_server_msg_dispatcher.register_handler<world_create_character_handler, Config&, moodycamel::ReaderWriterQueue<std::shared_ptr<player_event>>&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, player_event_queue, players_repo, producer);
+        world_server_msg_dispatcher.register_handler<world_play_character_handler, Config&, moodycamel::ReaderWriterQueue<std::shared_ptr<player_event>>&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, player_event_queue, players_repo, producer);
         world_server_msg_dispatcher.register_handler<world_get_characters_handler, Config&, iplayers_repository&, shared_ptr<ikafka_producer<false>>>(config, players_repo, producer);
 
         consumer->start(config.broker_list, config.group_id, std::vector<std::string>{"server-" + to_string(config.server_id), "world_messages", "broadcast"}, 50);
@@ -225,17 +230,18 @@ unique_ptr<thread> create_consumer_thread(Config& config, shared_ptr<database_po
     });
 }
 
-unique_ptr<thread> create_world_thread(Config& config, shared_ptr<database_pool> db_pool, shared_ptr<ikafka_producer<false>> producer) {
+unique_ptr<thread> create_world_thread(Config& config, moodycamel::ReaderWriterQueue<shared_ptr<player_event>>& player_event_queue, shared_ptr<database_pool> db_pool,
+                                       shared_ptr<ikafka_producer<false>> producer) {
     if (!producer) {
         LOG(ERROR) << NAMEOF(create_world_thread) << " one of the arguments are null";
         throw runtime_error("[main:world] one of the arguments are null");
     }
 
-    return make_unique<thread>([=, &config] {
+    return make_unique<thread>([=, &config, &player_event_queue] {
         LOG(INFO) << NAMEOF(create_world_thread) << " starting world thread";
 
         world w;
-        w.load_from_database(db_pool, config);
+        w.load_from_database(db_pool, config, player_event_queue, producer);
         auto next_tick = chrono::system_clock::now() + chrono::milliseconds(config.tick_length);
         auto second_next_tick = next_tick + chrono::milliseconds(config.tick_length);
         while (!quit) {
@@ -269,6 +275,7 @@ int main() {
     auto db_pool = make_shared<database_pool>();
     db_pool->create_connections(config.connection_string, 2);
     auto common_injector = create_common_di_injector();
+    moodycamel::ReaderWriterQueue<shared_ptr<player_event>> player_event_queue;
 
     auto producer = common_injector.create<shared_ptr<ikafka_producer<false>>>();
     auto consumer = common_injector.create<shared_ptr<ikafka_consumer<false>>>();
@@ -278,8 +285,8 @@ int main() {
     try {
         LOG(INFO) << "[main] starting main thread";
 
-        auto consumer_thread = create_consumer_thread(config, db_pool, consumer, producer);
-        auto world_thread = create_world_thread(config, db_pool, producer);
+        auto consumer_thread = create_consumer_thread(config, player_event_queue, db_pool, consumer, producer);
+        auto world_thread = create_world_thread(config, player_event_queue, db_pool, producer);
 
         while (!quit) {
             try {

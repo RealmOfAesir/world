@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -22,13 +22,20 @@
 #include <database_pool.h>
 #include <config.h>
 #include <ecs/systems/ecs_system.h>
+#include <readerwriterqueue.h>
+#include <events/event.h>
+#include <repositories/models/player_model.h>
+#include <kafka_producer.h>
+#include <events/player_events/player_event.h>
 
 namespace roa {
     class world {
     public:
 
+        ~world();
         void do_tick(uint32_t tick_length);
-        void load_from_database(std::shared_ptr<idatabase_pool> db_pool, Config& config);
+        void load_from_database(std::shared_ptr<idatabase_pool> db_pool, Config& config,
+                                moodycamel::ReaderWriterQueue<std::shared_ptr<player_event>> &player_event_queue, std::shared_ptr<ikafka_producer<false>> producer);
 
     private:
         EntityManager _ex;

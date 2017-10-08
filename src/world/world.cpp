@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -25,19 +25,27 @@
 #include <lua/lua_interop.h>
 #include <config.h>
 #include <ecs/systems/script_system.h>
+#include <ecs/systems/player_event_system.h>
 
 using namespace std;
 using namespace roa;
 
+world::~world() {
+    _systems.clear();
+    _ex.reset();
+}
+
 void world::do_tick(uint32_t tick_length) {
     LOG(TRACE) << NAMEOF(world::do_tick) << " starting tick";
+
     for(auto& system : _systems) {
         system->update(_ex, tick_length);
     }
     LOG(TRACE) << NAMEOF(world::do_tick) << " finished tick";
 }
 
-void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& config) {
+void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& config,
+                               moodycamel::ReaderWriterQueue<std::shared_ptr<player_event>> &player_event_queue, shared_ptr<ikafka_producer<false>> producer) {
 
     LOG(INFO) << NAMEOF(world::load_from_database) << " loading world from db";
 
@@ -48,6 +56,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
             boost::di::bind<iscripts_repository>.to<scripts_repository>()
     );
 
+    _systems.emplace_back(make_unique<player_event_system>(config, player_event_queue, producer));
     _systems.emplace_back(make_unique<script_system>(config));
 
     auto map_entity = _ex.create();
@@ -55,14 +64,14 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
 
     mc.tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
 
-    mc.tiles.resize(1);
-    mc.tiles[0].resize(100);
+    mc.layers.emplace_back(vector<uint64_t>{}, 0, 0, 100, 100);
+    mc.layers[0].tiles.reserve(100*100);
 
     for(uint32_t x = 0; x < 100; x++) {
         for(uint32_t y = 0; y < 100; y++) {
             auto tile_entity = _ex.create();
             _ex.assign<tile_component>(tile_entity, map_entity, y+1);
-            mc.tiles[0][x].push_back(tile_entity);
+            mc.layers[0].tiles.push_back(tile_entity);
         }
     }
 
@@ -85,7 +94,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
         for(uint32_t x = 0; x < 100; x++) {
             for(uint32_t y = 0; y < 10; y++) {
                 auto script_entity = _ex.create();
-                _ex.assign<script_container_component>(mc.tiles[0][x][y], unordered_map<uint64_t, script_component>{
+                _ex.assign<script_container_component>(mc.layers[0].tiles[x+y*mc.layers[0].width], unordered_map<uint64_t, script_component>{
                     {
                         script_entity,
                         {

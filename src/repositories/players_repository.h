@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -21,44 +21,9 @@
 #include <string>
 #include <custom_optional.h>
 #include "repository.h"
+#include "models/player_model.h"
 
 namespace roa {
-    struct player_location {
-        uint32_t x;
-        uint32_t y;
-        std::string map_name;
-
-        player_location() = default;
-        player_location(uint32_t x, uint32_t y, std::string map_name) : x(x), y(y), map_name(map_name) {}
-    };
-
-    struct player_stat {
-        uint64_t id;
-        std::string name;
-        uint64_t value;
-
-        player_stat() = default;
-        player_stat(uint64_t id, std::string name, uint64_t value) : id(id), name(name), value(value) {}
-    };
-
-    struct player_item {
-        uint64_t id;
-        std::string name;
-
-        player_item() = default;
-        player_item(uint64_t id, std::string name) : id(id), name(name) {}
-    };
-
-    struct player {
-        uint64_t id;
-        uint64_t user_id;
-        uint64_t location_id;
-        std::string name;
-        STD_OPTIONAL<player_location> location;
-        std::vector<player_stat> stats;
-        std::vector<player_item> items;
-    };
-
     enum class included_tables : int
     {
         none,

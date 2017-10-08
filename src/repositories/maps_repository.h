@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -21,13 +21,9 @@
 #include <string>
 #include <custom_optional.h>
 #include "repository.h"
+#include "models/map_model.h"
 
 namespace roa {
-    struct map {
-        uint32_t id;
-        std::string name;
-    };
-
     class imaps_repository : public irepository {
     public:
         virtual ~imaps_repository() = default;

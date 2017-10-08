@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -17,11 +17,15 @@
 */
 
 #include "script_system.h"
+#include <queue>
 #include <easylogging++.h>
 #include <macros.h>
 #include <lua/lua_interop.h>
 #include <custom_optional.h>
 #include <lua/lua_script.h>
+#include <events/lua_events/update_tile_event.h>
+#include <events/lua_events/create_script_event.h>
+#include <events/lua_events/destroy_script_event.h>
 
 using namespace std;
 using namespace experimental;
@@ -49,6 +53,7 @@ STD_OPTIONAL<uint64_t> get_map_entity_from_id(EntityManager &es, uint32_t map_id
 }
 
 void script_system::update(EntityManager &es, TimeDelta dt) {
+    LOG(TRACE) << NAMEOF(script_system::update) << " starting tick";
     int updated_scripts = 0;
     int checked_entities = 0;
     int checked_scripts = 0;

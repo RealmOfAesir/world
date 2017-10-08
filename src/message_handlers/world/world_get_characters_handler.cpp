@@ -1,6 +1,6 @@
 /*
-    Realm of Aesir backend
-    Copyright (C) 2016  Michael de Lang
+    RealmOfAesirWorld
+    Copyright (C) 2017  Michael de Lang
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -57,7 +57,7 @@ void world_get_characters_handler::handle_message(unique_ptr<binary_message cons
     string queue_name = "server-" + to_string(msg->sender.server_origin_id);
 
     try {
-        if (auto casted_msg = dynamic_cast<get_characters_message<false> const *>(msg.get())) {
+        if (auto casted_msg = dynamic_cast<get_characters_message<false> const * const>(msg.get())) {
             auto transaction = _players_repository.create_transaction();
 
             auto players = _players_repository.get_players_by_user_id(casted_msg->user_id, included_tables::location,
@@ -65,15 +65,15 @@ void world_get_characters_handler::handle_message(unique_ptr<binary_message cons
 
             LOG(INFO) << NAMEOF(world_get_characters_handler::handle_message) << " found " << players.size() << " players for user_id " << casted_msg->user_id << " - queue: " << queue_name;
             if(players.size() > 0) {
-                this->_producer->enqueue_message(queue_name, create_message(msg->sender.client_id, _config.server_id, _config.world_name, players));
+                _producer->enqueue_message(queue_name, create_message(msg->sender.client_id, _config.server_id, _config.world_name, players));
             }
         } else {
             LOG(ERROR) << NAMEOF(world_get_characters_handler::handle_message) << " Couldn't cast message to get_characters_message";
-            this->_producer->enqueue_message(queue_name, create_error_message(msg->sender.client_id, _config.server_id, -1, "Something went wrong."));
+            _producer->enqueue_message(queue_name, create_error_message(msg->sender.client_id, _config.server_id, -1, "Something went wrong."));
         }
     } catch (std::runtime_error const &e) {
         LOG(ERROR) << NAMEOF(world_get_characters_handler::handle_message) << " error: " << typeid(e).name() << "-" << e.what();
-        this->_producer->enqueue_message(queue_name, create_error_message(msg->sender.client_id, _config.server_id, -1, "Something went wrong."));
+        _producer->enqueue_message(queue_name, create_error_message(msg->sender.client_id, _config.server_id, -1, "Something went wrong."));
     }
 }
 

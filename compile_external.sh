@@ -9,4 +9,7 @@ make -j$CPUS
 
 cd $DIR/external/LuaJIT
 make -j$CPUS
+
+cd $DIR/external/lz4
+make -j$CPUS
 cd $DIR
