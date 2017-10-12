@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <easylogging++.h>
 #include <catch.hpp>
 #include <roa_di.h>
-#include <easylogging++.h>
 #include <database_transaction.h>
 #include "test_helpers/startup_helper.h"
 #include "../src/repositories/players_repository.h"

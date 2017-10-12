@@ -17,7 +17,6 @@
 */
 
 #define CATCH_CONFIG_RUNNER
-#define ELPP_NO_LOG_TO_FILE
 
 #include <catch.hpp>
 #include <easylogging++.h>

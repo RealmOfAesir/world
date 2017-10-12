@@ -9,6 +9,8 @@ file(GLOB PROJECT_TEST_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp ${PROJECT_SOURCE_DIR}
 file(GLOB EASYLOGGING_SOURCE ${CMAKE_SOURCE_DIR}/external/common_backend/external/common/external/easyloggingpp/src/easylogging++.cc)
 add_executable(Test ${PROJECT_SOURCES} ${PROJECT_TEST_SOURCES} ${EASYLOGGING_SOURCE} main.cpp)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DELPP_NO_LOG_TO_FILE ")
+
 add_test(NAME MyTest COMMAND Test)
 
 include_directories("${CMAKE_SOURCE_DIR}/src")
