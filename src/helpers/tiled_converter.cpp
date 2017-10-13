@@ -99,16 +99,13 @@ string tiled_converter::convert_map_to_json(EntityManager const &es, map_compone
     for(auto& layer : mc.layers) {
         int tiles_size = layer.tiles.size() * 4;
         int destSize = LZ4_compressBound(tiles_size);
-        char* tiles_compressed = new char[tiles_size]();
-        char* tiles = new char[tiles_size]();
+        char* tiles_compressed = new char[destSize];
+        char* tiles = new char[tiles_size];
         uint32_t *tiles32 = reinterpret_cast<uint32_t*>(tiles);
 
-        uint32_t i = 0;
-        for(auto& tile : layer.tiles) {
-            auto& container = es.get<tile_component>(tile);
 
-            tiles32[i] = container.tile_id;
-            i++;
+        for(uint32_t i = 0; i < layer.tiles.size(); i++) {
+            tiles32[i] = es.get<tile_component>(layer.tiles[i]).tile_id;
         }
 
         auto ret = LZ4_compress_default(tiles, tiles_compressed, tiles_size, destSize);
@@ -120,6 +117,7 @@ string tiled_converter::convert_map_to_json(EntityManager const &es, map_compone
         }
 
         string base64_data = base64_encode(reinterpret_cast<unsigned char*>(tiles_compressed), ret);
+
 
         delete[] tiles;
         delete[] tiles_compressed;
