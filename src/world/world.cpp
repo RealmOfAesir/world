@@ -64,13 +64,13 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
 
     mc.tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
 
-    mc.layers.emplace_back(vector<uint64_t>{}, 0, 0, 100, 100);
+    mc.layers.emplace_back(vector<uint32_t>{}, 0, 0, 100, 100);
     mc.layers[0].tiles.reserve(100*100);
 
     for(uint32_t x = 0; x < 100; x++) {
         for(uint32_t y = 0; y < 100; y++) {
             auto tile_entity = _ex.create();
-            _ex.assign<tile_component>(tile_entity, map_entity, y+1);
+            _ex.assign<tile_component>(tile_entity, map_entity, static_cast<uint16_t>(y+1));
             mc.layers[0].tiles.push_back(tile_entity);
         }
     }
@@ -94,7 +94,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
         for(uint32_t x = 0; x < 100; x++) {
             for(uint32_t y = 0; y < 10; y++) {
                 auto script_entity = _ex.create();
-                _ex.assign<script_container_component>(mc.layers[0].tiles[x+y*mc.layers[0].width], unordered_map<uint64_t, script_component>{
+                _ex.assign<script_container_component>(mc.layers[0].tiles[x+y*mc.layers[0].width], unordered_map<uint32_t, script_component>{
                     {
                         script_entity,
                         {

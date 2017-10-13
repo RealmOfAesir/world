@@ -30,7 +30,7 @@ namespace roa {
     };
 
     struct script_component {
-        script_component(uint64_t id, lua_script script, uint32_t execute_in_ms, uint32_t loop_every_ms,
+        script_component(uint32_t id, lua_script script, uint32_t execute_in_ms, uint32_t loop_every_ms,
                          trigger_type_enum trigger_type, bool global, bool debug)
                 : id(id), script(std::move(script)), times_executed(0), execute_in_ms(execute_in_ms),
                   loop_every_ms(loop_every_ms), trigger_type(trigger_type), global(global), debug(debug) {}
@@ -42,7 +42,7 @@ namespace roa {
         script_component& operator=(script_component&&) { return *this; };
         script_component(const script_component&) = default;
 
-        uint64_t id;
+        uint32_t id;
         lua_script script;
         uint32_t times_executed;
         uint32_t execute_in_ms;
@@ -54,14 +54,14 @@ namespace roa {
 
     struct script_container_component {
         script_container_component() : scripts() {}
-        script_container_component(std::unordered_map<uint64_t, script_component> scripts) : scripts(scripts) {}
+        script_container_component(std::unordered_map<uint32_t, script_component> scripts) : scripts(scripts) {}
         script_container_component& operator=(script_container_component&&) { return *this; };
         script_container_component(const script_container_component&) = default;
 
-        inline void remove_by_id(uint64_t id) noexcept {
+        inline void remove_by_id(uint32_t id) noexcept {
             scripts.erase(id);
         }
 
-        std::unordered_map<uint64_t, script_component> scripts;
+        std::unordered_map<uint32_t, script_component> scripts;
     };
 }

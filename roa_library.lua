@@ -20,9 +20,9 @@ local ffi = require("ffi")
 
 ffi.cdef[[
 void roa_log(int level, char const * message);
-void set_tile_properties(uint64_t id, uint32_t tile_id);
-void destroy_script(uint64_t id);
-void create_script(char const * name, uint64_t id, uint32_t execute_in_ms, uint32_t loop_every_ms, uint32_t trigger_type, bool debug);
+void set_tile_properties(uint32_t id, uint16_t tile_id);
+void destroy_script(uint32_t id);
+void create_script(char const * name, uint32_t id, uint32_t execute_in_ms, uint32_t loop_every_ms, uint32_t trigger_type, bool debug);
 ]]
 
 local roa = {}

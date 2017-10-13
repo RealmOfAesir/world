@@ -23,10 +23,10 @@
 
 namespace roa {
     struct layer {
-        layer(std::vector<uint64_t> tiles, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+        layer(std::vector<uint32_t> tiles, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
                 : tiles(tiles), x(x), y(y), width(width), height(height) {}
 
-        std::vector<uint64_t> tiles;
+        std::vector<uint32_t> tiles;
         uint32_t x;
         uint32_t y;
         uint32_t width;

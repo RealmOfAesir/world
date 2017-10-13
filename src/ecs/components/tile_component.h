@@ -20,9 +20,9 @@
 
 namespace roa {
     struct tile_component {
-        tile_component(uint64_t map_id, uint32_t tile_id) : map_id(map_id), tile_id(tile_id) {}
+        tile_component(uint32_t map_id, uint16_t tile_id) : map_id(map_id), tile_id(tile_id) {}
 
-        uint64_t map_id;
-        uint32_t tile_id;
+        uint32_t map_id;
+        uint16_t tile_id;
     };
 }

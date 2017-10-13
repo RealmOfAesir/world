@@ -30,7 +30,7 @@
 #include "components/tile_component.h"
 
 namespace roa {
-    using EntityManager = entt::StandardRegistry<uint64_t, ai_component, character_component, effect_component, map_component, player_component, position_component,
+    using EntityManager = entt::StandardRegistry<uint32_t, ai_component, character_component, effect_component, map_component, player_component, position_component,
             script_component, script_container_component, stat_component, tile_component>;
 
     using TimeDelta = uint32_t;

@@ -24,12 +24,12 @@
 namespace roa {
     struct update_tile_event : public event_type {
         update_tile_event() = default;
-        update_tile_event(uint64_t id, uint32_t tile_id) : event_type(update_tile_event::type), id(id), tile_id(tile_id) {}
+        update_tile_event(uint32_t id, uint16_t tile_id) : event_type(update_tile_event::type), id(id), tile_id(tile_id) {}
         virtual ~update_tile_event() {}
 
         static constexpr uint32_t type = 1;
-        uint64_t id;
-        uint32_t tile_id;
+        uint32_t id;
+        uint16_t tile_id;
     };
 }
 

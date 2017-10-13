@@ -50,15 +50,15 @@ extern "C" void roa_log(int level, char const *message) {
     }
 }
 
-extern "C" void set_tile_properties(uint64_t id, uint32_t tile_id) {
+extern "C" void set_tile_properties(uint32_t id, uint16_t tile_id) {
     _script_event_queue.emplace(make_shared<update_tile_event>(id, tile_id));
 }
 
-extern "C" void destroy_script(uint64_t id, uint64_t attached_entity_id) {
+extern "C" void destroy_script(uint32_t id, uint32_t attached_entity_id) {
     _script_event_queue.emplace(make_shared<destroy_script_event>(id, attached_entity_id));
 }
 
-extern "C" void create_script(const char * name, uint64_t id, uint32_t execute_in_ms,
+extern "C" void create_script(const char * name, uint32_t id, uint32_t execute_in_ms,
                               uint32_t loop_every_ms, uint32_t trigger_type, bool debug) {
     trigger_type_enum type;
     if(trigger_type == 0) {

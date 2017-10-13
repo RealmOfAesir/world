@@ -20,8 +20,8 @@
 
 namespace roa {
     struct character_component {
-        character_component(uint64_t map_id) : map_id(map_id) {}
+        character_component(uint32_t map_id) : map_id(map_id) {}
 
-        uint64_t map_id;
+        uint32_t map_id;
     };
 }

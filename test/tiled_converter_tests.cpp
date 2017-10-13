@@ -23,58 +23,88 @@
 #include <json.hpp>
 #include <base64.h>
 #include <lz4.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace roa;
 using namespace nlohmann;
 
+size_t get_current_rss() {
+    /* Linux ---------------------------------------------------- */
+    long rss = 0L;
+    FILE* fp = NULL;
+    if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
+        return (size_t)0L;      /* Can't open? */
+    if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
+    {
+        fclose( fp );
+        return (size_t)0L;      /* Can't read? */
+    }
+    fclose( fp );
+    return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
+}
+
 TEST_CASE("convert_map_to_json tests") {
     EntityManager _ex;
+
+    const int layers = 100;
+    const int width_tiles = 256;
+    const int height_tiles = 256;
+
+    auto start_mem = get_current_rss();
+    auto start = chrono::high_resolution_clock::now();
     auto map_entity = _ex.create();
     auto& mc = _ex.assign<map_component>(map_entity, 0u, 64u, 64u, 640u, 640u, 1u, 1u, 101u);
     mc.tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
-    mc.layers.emplace_back(vector<uint64_t>{}, 0, 0, 500, 500);
+    for(uint32_t z = 0; z < layers; z++) {
+        mc.layers.emplace_back(vector<uint32_t>{}, 0, 0, width_tiles, height_tiles);
+        mc.layers[z].tiles.reserve(width_tiles * height_tiles);
 
-    mc.layers[0].tiles.reserve(500*500);
-
-    for(uint32_t x = 0; x < 500; x++) {
-        for(uint32_t y = 0; y < 500; y++) {
-            auto tile_entity = _ex.create();
-            _ex.assign<tile_component>(tile_entity, map_entity, y+1);
-            mc.layers[0].tiles.push_back(tile_entity);
-        }
-    }
-
-    auto start = chrono::high_resolution_clock::now();
-    string ret;
-    for(int i = 0; i < 100; i++) {
-        REQUIRE_NOTHROW(ret = tiled_converter::convert_map_to_json(_ex, mc));
-    }
-    auto end = chrono::high_resolution_clock::now();
-
-    LOG(INFO) << " time required to run: " << chrono::duration_cast<chrono::milliseconds>((end - start)).count() << " ms";
-    LOG(INFO) << ret;
-
-    _ex.reset();
-
-    auto json_map = json::parse(ret);
-    std::string base64data = json_map["layers"][0]["data"];
-    std::string data = base64_decode(base64data);
-
-    int tiles_size = 500 * 500 * 4;
-    char* tiles = new char[tiles_size]();
-
-    auto lz4_ret = LZ4_decompress_safe(data.c_str(), tiles, data.size(), tiles_size);
-    CHECK(lz4_ret > 0);
-
-    if(lz4_ret > 0) {
-        for (uint32_t x = 0; x < 500; x++) {
-            for (uint32_t y = 0; y < 500; y++) {
-                uint32_t tocheck = reinterpret_cast<uint32_t *>(tiles)[x * 500 + y];
-                CHECK(tocheck == y + 1);
+        for(uint32_t x = 0; x < width_tiles; x++) {
+            for(uint32_t y = 0; y < height_tiles; y++) {
+                auto tile_entity = _ex.create();
+                _ex.assign<tile_component>(tile_entity, map_entity, static_cast<uint16_t>(y+1));
+                mc.layers[z].tiles.push_back(tile_entity);
             }
         }
     }
 
-    delete tiles;
+    auto end = chrono::high_resolution_clock::now();
+    auto end_mem = get_current_rss();
+
+    LOG(INFO) << " startup time required to run: " << chrono::duration_cast<chrono::milliseconds>((end - start)).count() << " ms";
+    LOG(INFO) << " mem: " << (end_mem - start_mem) / 1024 / 1024;
+
+    start = chrono::high_resolution_clock::now();
+    string ret;
+    REQUIRE_NOTHROW(ret = tiled_converter::convert_map_to_json(_ex, mc));
+    end = chrono::high_resolution_clock::now();
+
+    LOG(INFO) << " convert to json time required to run: " << chrono::duration_cast<chrono::milliseconds>((end - start)).count() << " ms";
+
+    _ex.reset();
+
+    auto json_map = json::parse(ret);
+
+    for(uint32_t z = 0; z < layers; z++) {
+        std::string base64data = json_map["layers"][z]["data"];
+        std::string data = base64_decode(base64data);
+
+        int tiles_size = width_tiles * height_tiles * 4;
+        char *tiles = new char[tiles_size]();
+
+        auto lz4_ret = LZ4_decompress_safe(data.c_str(), tiles, data.size(), tiles_size);
+        CHECK(lz4_ret > 0);
+
+        if (lz4_ret > 0) {
+            for (uint32_t x = 0; x < width_tiles; x++) {
+                for (uint32_t y = 0; y < height_tiles; y++) {
+                    uint32_t tocheck = reinterpret_cast<uint32_t *>(tiles)[x * width_tiles + y];
+                    CHECK(tocheck == y + 1);
+                }
+            }
+        }
+
+        delete tiles;
+    }
 }

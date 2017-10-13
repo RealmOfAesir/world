@@ -24,14 +24,14 @@
 namespace roa {
     struct create_script_event : public event_type {
         create_script_event() = default;
-        create_script_event(std::string name, std::string script, uint64_t entity_id, uint32_t execute_in_ms, uint32_t loop_every_ms, trigger_type_enum trigger_type, bool debug)
+        create_script_event(std::string name, std::string script, uint32_t entity_id, uint32_t execute_in_ms, uint32_t loop_every_ms, trigger_type_enum trigger_type, bool debug)
                 : event_type(create_script_event::type), name(name), script(script), entity_id(entity_id), execute_in_ms(execute_in_ms), loop_every_ms(loop_every_ms), trigger_type(trigger_type), debug(debug) {}
         virtual ~create_script_event() {}
 
         static constexpr uint32_t type = 3;
         std::string name;
         std::string script;
-        uint64_t entity_id;
+        uint32_t entity_id;
         uint32_t execute_in_ms;
         uint32_t loop_every_ms;
         trigger_type_enum trigger_type;

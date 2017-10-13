@@ -39,8 +39,8 @@ enum entity_types {
     player = 3
 };
 
-STD_OPTIONAL<uint64_t> get_map_entity_from_id(EntityManager &es, uint32_t map_id) {
-    STD_OPTIONAL<uint64_t> ret;
+STD_OPTIONAL<uint32_t> get_map_entity_from_id(EntityManager &es, uint32_t map_id) {
+    STD_OPTIONAL<uint32_t> ret;
 
     for(auto entity : es.view<map_component>()) {
         auto& map = es.get<map_component>(entity);
@@ -117,7 +117,7 @@ void script_system::update(EntityManager &es, TimeDelta dt) {
                 lscript.set_global("roa_entity");
 
                 if (!script.global) {
-                    uint64_t map_id;
+                    uint32_t map_id;
 
                     if (es.has<tile_component>(entity)) {
                         auto& tile_handle = es.get<tile_component>(entity);
