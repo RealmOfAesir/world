@@ -91,7 +91,7 @@ TEST_CASE("convert_map_to_json tests") {
         std::string data = base64_decode(base64data);
 
         int tiles_size = width_tiles * height_tiles * 4;
-        char *tiles = new char[tiles_size]();
+        char *tiles = new char[tiles_size];
 
         auto lz4_ret = LZ4_decompress_safe(data.c_str(), tiles, data.size(), tiles_size);
         CHECK(lz4_ret > 0);
