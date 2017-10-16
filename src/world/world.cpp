@@ -60,7 +60,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     _systems.emplace_back(make_unique<script_system>(config));
 
     auto map_entity = _ex.create();
-    auto& mc = _ex.assign<map_component>(map_entity, 0u, 64u, 64u, 640u, 640u, 1u, 1u, 3u);
+    auto& mc = _ex.assign<map_component>(map_entity, 1u, 64u, 64u, 640u, 640u, 1u, 1u, 10u);
 
     mc.tilesets.emplace_back(1, "terrain.png"s, 64, 64, 1536, 2560);
 
@@ -70,7 +70,7 @@ void world::load_from_database(shared_ptr<idatabase_pool> db_pool, Config& confi
     for(uint32_t x = 0; x < 100; x++) {
         for(uint32_t y = 0; y < 100; y++) {
             auto tile_entity = _ex.create();
-            _ex.assign<tile_component>(tile_entity, map_entity, static_cast<uint16_t>(y+1));
+            _ex.assign<tile_component>(tile_entity, 1u, static_cast<uint16_t>(y+1));
             mc.layers[0].tiles.push_back(tile_entity);
         }
     }

@@ -22,8 +22,11 @@
 #include <events/player_events/enter_map_event.h>
 #include "player_event_system.h"
 #include <cereal/archives/json.hpp>
+#include <helpers/tiled_converter.h>
+#include <messages/game/send_map_message.h>
 
 using namespace std;
+using namespace experimental;
 using namespace roa;
 using namespace rapidjson;
 
@@ -41,7 +44,13 @@ void player_event_system::update(EntityManager &es, TimeDelta dt) {
             }
 
             if(auto map = get_map(es, enter_event->_player)) {
+                string map_json = tiled_converter::convert_map_to_json(es, map.value());
+                string queue = "server-" + to_string(enter_event->_player_gateway_id);
 
+                _producer->enqueue_message(queue, binary_send_map_message {
+                    {false, enter_event->_player_client_id, _config.server_id, 0 /* ANY */},
+                    map_json
+                });
             } else {
                 send_error(enter_event);
             }
@@ -53,6 +62,7 @@ void player_event_system::update(EntityManager &es, TimeDelta dt) {
 
 STD_OPTIONAL<map_component> player_event_system::get_map(EntityManager &es, player const &plyr) const noexcept {
     auto map_id = plyr.location->map_id;
+
     for(auto map_entity : es.view<map_component>()) {
         auto& map_comp = es.get<map_component>(map_entity);
         if(map_comp.id == map_id) {
@@ -64,9 +74,12 @@ STD_OPTIONAL<map_component> player_event_system::get_map(EntityManager &es, play
 }
 
 void player_event_system::send_error(player_event const * const event) const noexcept {
-    LOG(ERROR) << NAMEOF(player_event_system::do_tick) << " couldn't execute action";
+    LOG(ERROR) << NAMEOF(player_event_system::send_error) << " couldn't execute action";
 
     string queue_name = "server-" + to_string(event->_player_gateway_id);
+
+    LOG(ERROR) << NAMEOF(player_event_system::send_error) << " " << queue_name << " - " << event->_player_client_id << " - " << _config.server_id;
+
     _producer->enqueue_message(queue_name, binary_error_response_message {
             {false, event->_player_client_id, _config.server_id, 0 /* ANY */},
             -1,

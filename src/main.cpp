@@ -217,6 +217,7 @@ unique_ptr<thread> create_consumer_thread(Config& config, moodycamel::ReaderWrit
             try {
                 auto msg = consumer->try_get_message(50);
                 if (get<1>(msg)) {
+                    LOG(INFO) << "got msg";
                     world_server_msg_dispatcher.trigger_handler(msg);
                 }
             } catch (serialization_exception &e) {

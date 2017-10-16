@@ -56,7 +56,7 @@ void world_play_character_handler::handle_message(const std::unique_ptr<const bi
                 return;
             }
 
-            _player_event_queue.enqueue(make_shared<enter_world_event>(msg->sender.client_id, msg->sender.server_destination_id, existing_player.value()));
+            _player_event_queue.enqueue(make_shared<enter_world_event>(msg->sender.client_id, msg->sender.server_origin_id, existing_player.value()));
         } else {
             LOG(ERROR) << NAMEOF(world_play_character_handler::handle_message) << " Couldn't cast message to play_character_message";
             _producer->enqueue_message(queue_name, create_error_message(msg->sender.client_id, _config.server_id, -1, "Something went wrong."));
